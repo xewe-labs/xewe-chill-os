@@ -6,10 +6,6 @@ the last point's speed (fail-safe), which `test_offline_sensor_fail_safe` checks
 (temperature -> PWM -> RPM) needs the real pad (`requires hardware`).
 """
 import os
-import re
-import shutil
-import subprocess
-from pathlib import Path
 
 import pytest
 
@@ -17,7 +13,6 @@ from xewe.serialio import BOOT_READY, BOOT_UNPROVISIONED, wait_for_banner
 
 ID = "fan_curve"
 NAME = "Fan Curve"     # module.properties name == C++ name argument
-MODULE_DIR = Path(__file__).resolve().parents[1] / "src" / "FanCurve"
 
 
 def test_compiles(compiled):
@@ -72,46 +67,3 @@ def test_closed_loop(serial):
     serial.command("$mlx90614 read", expect=r"Object: -?\d+\.\d+ C", timeout=10)
     serial.collect(silence=2.5, limit=5)
     serial.command("$fan status", expect=r"\d+ RPM", timeout=5)
-
-
-# ---- host: src/FanCurve/CurveMath.h (pure, no Arduino), built with the host g++ ------------------
-
-CURVE_MATH_H = MODULE_DIR / "CurveMath.h"
-HOST_TEST = Path(__file__).resolve().parent / "host" / "test_curve_math.cpp"
-
-
-@pytest.mark.host
-def test_curve_math_host(tmp_path):
-    """tests/host/test_curve_math.cpp: interpolation, clamps, validation, schema, hysteresis, colours."""
-    gpp = shutil.which("g++")
-    if gpp is None:
-        pytest.skip("g++ not installed")
-    exe = tmp_path / "test_curve_math"
-    subprocess.run([gpp, "-std=c++17", "-Wall", "-Wextra", "-Werror", "-o", str(exe), str(HOST_TEST)], check=True)
-    run = subprocess.run([str(exe)], capture_output=True, text=True, timeout=30)
-    assert run.returncode == 0, run.stdout + run.stderr
-    assert "PASSED" in run.stdout
-    checks = int(re.search(r"PASSED: (\d+) check", run.stdout)[1])
-    assert checks >= 15
-
-
-@pytest.mark.host
-def test_curve_math_is_pure():
-    """The header stays host-buildable, and FanCurve.cpp uses it instead of its own copies."""
-    text = CURVE_MATH_H.read_text()
-    includes = re.findall(r"#include\s*[<\"]([^>\"]+)", text)
-    assert includes and all(re.fullmatch(r"c[a-z]+|string|vector", i) for i in includes), includes
-    cpp = (MODULE_DIR / "FanCurve.cpp").read_text()
-    for needle in ("curve_math::schema_ok(stored.schema)", "curve_math::validate_points(",
-                   "curve_math::speed_to_pwm(", "curve_math::leds_on(", "curve_math::led_colour("):
-        assert needle in cpp, needle
-    assert "namespace curve_math {" not in cpp
-    assert "SCHEMA                      = curve_math::SCHEMA" in (MODULE_DIR / "FanCurve.h").read_text()
-
-
-@pytest.mark.host
-def test_properties_match_source():
-    props = dict(l.split("=", 1) for l in (MODULE_DIR / "module.properties").read_text().splitlines() if "=" in l)
-    cpp = (MODULE_DIR / f"{props['folder']}.cpp").read_text()
-    assert props["id"] == ID and f'"{ID}"' in cpp and f'"{NAME}"' in cpp
-    assert len(props["id"]) <= 15

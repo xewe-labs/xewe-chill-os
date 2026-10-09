@@ -7,14 +7,11 @@ two default strips present the add is refused there: remove one first or run it 
 Colour and glide checks need a strip and eyes (`requires hardware`).
 """
 import os
-import re
-from pathlib import Path
 
 import pytest
 
 ID = "argb"
 NAME = "ARGB"          # module.properties name == C++ name argument
-MODULE_DIR = Path(__file__).resolve().parents[1] / "src" / "Argb"
 
 
 def test_compiles(compiled):
@@ -52,11 +49,3 @@ def test_colour_on_strip(serial):
     if not os.environ.get("XEWE_TEST_ARGB_VISUAL"):
         pytest.skip("requires hardware: a WS2812B strip and someone looking at it (XEWE_TEST_ARGB_VISUAL=1)")
     serial.command("$argb print_json", expect=r'"state":', timeout=5)
-
-
-@pytest.mark.host
-def test_properties_match_source():
-    props = dict(l.split("=", 1) for l in (MODULE_DIR / "module.properties").read_text().splitlines() if "=" in l)
-    cpp = (MODULE_DIR / f"{props['folder']}.cpp").read_text()
-    assert props["id"] == ID and f'"{ID}"' in cpp and f'"{NAME}"' in cpp
-    assert props["depends_libraries"] == "FastLED"

@@ -51,7 +51,7 @@ get_temp() → cached object temperature, or 255.0 when disabled/offline
 
 ### Tests
 
-`tests/test_mlx90614.py`: `test_compiles` (no board); `test_status`, `test_set_addr_validation`,
+`tests/board/test_mlx90614.py`: `test_compiles` (no board); `test_status`, `test_set_addr_validation`,
 `test_set_pins_rejects_same_pin` and `test_scan_bare_bus` (`XEWE_TEST_MLX_SDA`/`XEWE_TEST_MLX_SCL`,
 restores the pins) on a bare board; `test_read_temperature` requires a sensor (`XEWE_TEST_MLX_PRESENT=1`).
 Without pull-ups an I2C scan can take tens of seconds (each probe may hit the bus timeout).

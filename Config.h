@@ -4,7 +4,7 @@
 //
 // Build settings. `xewe build` generates <XeWeBuildInfo.h> (PROJECT_NAME, BUILD_VERSION,
 // BUILD_TIMESTAMP, BUILD_CHIP and every `--define KEY=VALUE`); it wins over the defaults below.
-// The version lives in xewe.lock [project]; do not edit it here.
+// The version lives in xewe.toml [project]; do not edit it here.
 #pragma once
 
 // Unconditional on purpose: arduino-cli only adds a library to the build when an #include of it

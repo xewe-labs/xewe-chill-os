@@ -6,14 +6,11 @@ GPIOs with nothing attached) and moves it back afterwards. The temperature test 
 MLX90614 on the configured pins.
 """
 import os
-import re
-from pathlib import Path
 
 import pytest
 
 ID = "mlx90614"
 NAME = "MLX90614"      # module.properties name == C++ name argument
-MODULE_DIR = Path(__file__).resolve().parents[1] / "src" / "Mlx90614"
 
 
 def _current(serial):
@@ -72,11 +69,3 @@ def test_read_temperature(serial):
         pytest.skip("requires hardware: an MLX90614 on the configured pins (set XEWE_TEST_MLX_PRESENT=1)")
     m = serial.command("$mlx90614 read", expect=r"Object: (-?\d+\.\d+) C, ambient: (-?\d+\.\d+) C", timeout=10)
     assert -40.0 < float(m[1]) < 125.0 and -40.0 < float(m[2]) < 125.0
-
-
-@pytest.mark.host
-def test_properties_match_source():
-    props = dict(l.split("=", 1) for l in (MODULE_DIR / "module.properties").read_text().splitlines() if "=" in l)
-    cpp = (MODULE_DIR / f"{props['folder']}.cpp").read_text()
-    assert props["id"] == ID and f'"{ID}"' in cpp and f'"{NAME}"' in cpp
-    assert re.fullmatch(r"[a-z][a-z0-9_]{0,14}", props["id"])

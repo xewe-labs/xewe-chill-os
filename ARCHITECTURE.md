@@ -9,7 +9,7 @@ declare line, and what is decided versus still open. Written 2026-10-08, at the 
 - **A template you clone and vibecode.** `xewe-os` is not a firmware you configure; it is a
   starting point you own. `git clone` (or GitHub "Use this template"), `./setup.sh`, `./run.sh`,
   then write your device in `xewe-os.ino` and `Config.h`. The repository holds only your code and
-  `xewe.lock`; everything else is fetched at pinned refs, so a project stays small and builds the
+  `xewe.toml`; everything else is fetched at pinned refs, so a project stays small and builds the
   same way later.
 - **Modules are code figured out once.** WiFi reconnects, NTP and timezones, debounced buttons, an
   HTTP command endpoint: each took effort to get right on an ESP32. A module captures that once, in
@@ -30,7 +30,7 @@ with arduino-cli (D5).
 
 | Repo | Job | Boundary |
 |---|---|---|
-| [`xewe-os`](https://github.com/xewe-labs/xewe-os) | the firmware template users clone | holds only its own code, `xewe.lock`, two thin scripts and released firmware |
+| [`xewe-os`](https://github.com/xewe-labs/xewe-os) | the firmware template users clone | holds only its own code, `xewe.toml`, two thin scripts and released firmware |
 | [`xewe-os-core`](https://github.com/xewe-labs/xewe-os-core) | `XeWeCore`, the one Arduino library | reusable code every firmware needs; publishable on its own; depends only on ArduinoJson |
 | [`xewe-os-modules`](https://github.com/xewe-labs/xewe-os-modules) | every module, `modules/<slug>/` | features some firmware needs; no toolchain of its own; built and tested through an `xewe-os` checkout (D21) |
 | [`xewe-os-tools`](https://github.com/xewe-labs/xewe-os-tools) | `xewe`, one Python package | everything that runs on the host: setup, build, flash, serial, test, release |
@@ -40,35 +40,52 @@ generic tool that checks and releases `XeWeCore` (D18).
 
 ```
                         xewe-os  (template)
-                        xewe.lock pins one ref each
+                        xewe.toml pins one ref each
              ┌──────────────────┼──────────────────┐
              v                  v                  v
       xewe-os-core       xewe-os-modules      xewe-os-tools
       (XeWeCore lib) <── each module has      (xewe: setup, build,
              ^           requires_core         flash, serial, test)
              │                                     │
-  publish-arduino-library                fetches core, modules, ArduinoJson,
-  (check + release XeWeCore)             arduino-cli and the esp32 core
-                                         into the project's build/
+  publish-arduino-library                fetches core and ArduinoJson into the
+  (check + release XeWeCore)             project's build/; arduino-cli, the esp32
+                                         core and modules once per machine
 ```
 
-A project after `./setup.sh --modules wifi,time`:
+### Build layout
+
+A project after `./setup.sh --modules wifi,time`, and the toolchain it shares with every other
+project on the machine:
 
 ```
+~/.xewe-os/build-tools/      shared      once per machine; XEWE_HOME overrides ~/.xewe-os
+├── arduino15/                           esp32 core(s), toolchains, esptool (several core versions coexist)
+├── bin/arduino-cli-<ver>                one binary per pinned arduino-cli version
+├── arduino-user/                        empty sketchbook (isolates ~/Arduino/libraries)
+├── downloads/                           archives (XEWE_CACHE overrides)
+└── sources/xewe-os-modules/<ref>/       the xewe-os-modules checkout, one per [modules] ref
+
 my-fw/
 ├── xewe-os.ino              committed   #include <XeWeCore.h>; XeWeOs os({...}); your setup()/loop()
 ├── Config.h                 committed   your defaults; includes the generated <XeWeBuildInfo.h>
-├── xewe.lock                committed   [project] [core] [modules] [tools] [libraries]
-├── setup.sh  run.sh         committed   bootstrap build/.venv, then call `python -m xewe`
+├── xewe.toml                committed   the manifest: [project] [core] [modules] [tools] [libraries]
+├── setup.sh  run.sh         committed   bootstrap build/tools/.venv, then call `python -m xewe`
 ├── static/firmware/releases/  committed  written by `xewe release`
-├── src/modules/             generated   Wifi/  Time/  Modules.h (includes + declare lines)  modules.lock
-└── build/                   generated   .venv/  bin/arduino-cli  arduino15/ (esp32 core)
-                                         libraries/{XeWeCore,ArduinoJson}/  xewe-os-modules/
-                                         gen/<chip>/XeWeBuildInfo/  out/<chip>/*.bin
+├── src/Modules.h            generated   #include <XeWeModules.h> + the declare lines
+└── build/                   generated
+    ├── builds/<chip>/                   gen/XeWeBuildInfo/  cache/ (arduino-cli build path)  out/*.bin
+    ├── config/                          build_config.toml  boards.toml
+    ├── libraries/                       XeWeCore/  ArduinoJson/  (and libraries modules need)
+    ├── modules/                         generated Arduino library XeWeModules (src/Wifi/  src/Time/ ...),
+    │                                    the selected modules' tests/<slug>/{board,unit}/, modules.lock
+    ├── tools/                           the xewe-os-tools checkout; tools/.venv
+    └── tmp/                             only on demand: sketch mirror, staging, pytest cache
 ```
 
-Nothing generated is committed and there are no submodules (D11). `build/` and `src/modules/` can
-be deleted at any time; `./setup.sh` rebuilds them from `xewe.lock`.
+The first `./setup.sh` on a machine downloads arduino-cli, the esp32 core and the modules repo once into
+`~/.xewe-os/build-tools/`; later projects reuse them. Nothing generated is committed and there are
+no submodules (D11). `build/` and `src/Modules.h` can be deleted at any time; `./setup.sh` rebuilds
+them from `xewe.toml`. The tools' `SPEC.md` §6 is the authoritative description.
 
 ## 3. XeWeCore shape
 
@@ -114,7 +131,7 @@ core defines `Serial` as a macro), the member `os.cli` is brace-initialised and 
 The full contract is
 [`xewe-os-modules/CONTRACT.md`](https://github.com/xewe-labs/xewe-os-modules/blob/main/CONTRACT.md).
 In short: a module is `modules/<slug>/` with `module.properties`, `src/<Folder>/<Folder>.{h,cpp}`,
-`tests/test_<slug>.py` and a README. `id` (at most 15 characters) is both the CLI group and the NVS
+`tests/board/test_<slug>.py` (optionally `tests/unit/`) and a README. `id` (at most 15 characters) is both the CLI group and the NVS
 namespace and never changes. The class derives from `xewe::Module`, lives in the global namespace,
 includes `<XeWeCore.h>`, names its constructor's Os parameter `host` (a parameter named `os` would
 hide the member), captures `[this]` only, and never writes `cli(`. Three tests are required:
@@ -130,21 +147,21 @@ and that every other argument is a declared dependency. Validation replaced huma
 
 ## 5. Tools
 
-`xewe` (from `xewe-os-tools`, called as `build/.venv/bin/python -m xewe` or through `./run.sh`):
+`xewe` (from `xewe-os-tools`, called as `build/tools/.venv/bin/python -m xewe` or through `./run.sh`):
 
 | Command | Does |
 |---|---|
-| `setup` | arduino-cli, esp32 core, XeWeCore, libraries and modules into `build/`; generates `src/modules/` |
-| `build [--chip C \| --all-chips] [--define K=V]` | compile into `build/out/<chip>/`, prints flash % |
+| `setup` | arduino-cli, esp32 core and the modules repo into `~/.xewe-os/build-tools/` (once per machine); XeWeCore and libraries into `build/`; generates `build/modules/` (library, module tests) and `src/Modules.h` |
+| `build [--chip C \| --all-chips] [--define K=V]` | compile into `build/builds/<chip>/out/`, prints flash % |
 | `flash`, `run`, `serial` | write the merged image at 0x0; build-flash-listen; timestamped console |
-| `test [--module SLUG] [--host-only] [--all-chips]` | pytest over project and module tests |
+| `test [--module SLUG] [--unit-only] [--all-chips]` | pytest over project and module tests (`tests/unit/`, `tests/board/`) |
 | `boards`, `doctor`, `clean` | board discovery; environment check; delete generated output |
-| `modules list\|select\|validate\|generate`, `lock show\|update` | modules and pins |
+| `modules list\|select\|validate\|generate`, `manifest show\|update` | modules and pins |
 | `release --version X.Y.Z` | release matrix into `static/firmware/releases/`; prints git/gh commands |
 
-**`xewe.lock`** is the project's whole dependency state: `[project]` (name, version, chip),
+**`xewe.toml`** is the project's manifest, its whole dependency state: `[project]` (name, version, chip),
 `[core]`, `[modules]` (with `selected`) and `[tools]` (repo + ref each) and `[libraries]`
-(ArduinoJson). Only `lock update`, `modules select`, `setup --modules` and `release` write it;
+(ArduinoJson). Only `manifest update`, `modules select`, `setup --modules` and `release` write it;
 `setup --latest` tries newer tags without editing it. The firmware version is
 `[project] version`; builds never change it.
 
@@ -152,15 +169,18 @@ and that every other argument is a declared dependency. Validation replaced huma
 `compiled, not run: no board attached (...)` and exit 0. `--require-board` turns that into exit 4
 (1 for `test`). Agents grep for the line instead of treating it as an error.
 
-**Test layers (D14).** Host-native C++ tests for pure logic run with an Arduino shim and no board
-(`xewe-os-core/extras/host/`). Host-driven Python tests (`xewe test`) flash the firmware and assert
-on serial output; without a board they report "compiled, not run", except `test_compiles`, which
-really builds. Hardware tests on a provisioned board are the same Python tests with a board
-attached. There are no on-device unit-test frameworks.
+**Test layers (D14).** Every firmware repo (core, each module, every project) splits its tests into
+`tests/unit/` and `tests/board/`, nothing else. Unit tests run on the developer machine with no board
+and no build: C++ for pure logic (core's Arduino shim in `xewe-os-core/tests/unit/`, a module's or
+project's pure headers built with g++ by a `unit`-marked pytest driver) and pure-logic Python
+(`@pytest.mark.unit`, selected by `xewe test --unit-only`). Board tests (`tests/board/*.py`, run by
+`xewe test`) flash the firmware and assert on serial output; without a board they report "compiled,
+not run", except `test_compiles`, which really builds. There are no on-device unit-test frameworks.
 
 **One board at a time, compile cost (D15).** A build costs about a minute per chip, so `build` and
-`test` compile only the selected chip; the c3/c6/s3 matrix runs with `--all-chips`. First setup
-downloads ~1.7 GB and installs ~6 GB into `build/`; `--arduino-data DIR` reuses an installed core.
+`test` compile only the selected chip; the c3/c6/s3 matrix runs with `--all-chips`. The first setup
+on a machine downloads ~1.7 GB and installs ~6 GB into `~/.xewe-os/build-tools/`; later projects
+reuse it, and `--arduino-data DIR` reuses an installed core elsewhere.
 The tools never read or write `~/.arduino15` or `~/Arduino`.
 
 ## 6. Versioning and release policy (D12)
@@ -170,11 +190,11 @@ The tools never read or write `~/.arduino15` or `~/Arduino`.
 | `xewe-os-core` | semver in `library.properties` | `X.Y.Z` (un-prefixed, Arduino registry rule) | `publish-arduino-library` check + release |
 | `xewe-os-modules` | repo-wide | `vX.Y.Z` | tag; each module declares `requires_core=>=2.0.0,<3.0.0` |
 | `xewe-os-tools` | `pyproject.toml` | `vX.Y.Z` | tag |
-| `xewe-os` | `xewe.lock [project] version`, independent | `vX.Y.Z` (optional) | `xewe release`, binaries committed under `static/firmware/releases/` |
+| `xewe-os` | `xewe.toml [project] version`, independent | `vX.Y.Z` (optional) | `xewe release`, binaries committed under `static/firmware/releases/` |
 
-The template pins, in `xewe.lock`: core `2.0.1`, modules `v0.2.0`, tools `v0.1.1`, ArduinoJson
+The template pins, in `xewe.toml`: core `2.0.1`, modules `v0.2.0`, tools `v0.1.1`, ArduinoJson
 `v7.4.3`; the template itself is `2.0.0`. A new core or modules release reaches a project only when
-its lock moves (`xewe lock update`).
+its manifest moves (`xewe manifest update`).
 
 ## 7. Decisions log
 
@@ -194,8 +214,8 @@ include is the umbrella `<XeWeCore.h>` (section 3).
 | D8 | **One library: `XeWeCore`** = utils + serial + cli + nvs + os | Resolves the `xewe-os` / `XeWeOS` name collision. ArduinoJson (header-only, the standard Arduino JSON library) is its one dependency |
 | D9 | "Core" not "Kernel" | Kernel implies scheduling/memory management, which this does not do |
 | D10 | **One tooling repo: `xewe-os-tools`** (setup + build + flash + serial + test) | Single Python package, shared port discovery and serial code |
-| D11 | Template gets dependencies via **`setup.sh` + `xewe.lock`** | Pinned tags for core, modules, tools; `--latest` overrides; nothing generated is committed; no submodules |
-| D12 | Versioning: core is semver and published; modules repo tagged as a whole, each module declares `requires_core`; template pins both in `xewe.lock` | Template version is independent |
+| D11 | Template gets dependencies via **`setup.sh` + `xewe.toml`** | Pinned tags for core, modules, tools; `--latest` overrides; nothing generated is committed; no submodules |
+| D12 | Versioning: core is semver and published; modules repo tagged as a whole, each module declares `requires_core`; template pins both in `xewe.toml` | Template version is independent |
 | D13 | Module contract keeps the explicit `declare` line in `module.properties` | Plus an automated validator for uniqueness of slug, id, folder, variable name (replaces human review) |
 | D14 | Tests are **Python, host-driven**: flash, send CLI commands over serial, assert on output | No on-device Unity tests. Host-native tests (Arduino shim, no board) for pure logic such as FlexData, CLI parser, utils |
 | D15 | One board attached at a time; compile per board costs ~1 min | Tester compiles only the attached/selected chip by default; the full C3/C6/S3 matrix runs only on an explicit flag |
@@ -230,6 +250,6 @@ Open and deferred:
 5. Was → now: the five libraries merged into one `XeWeCore` 2.0.0; `ModuleController` + `System` became the `XeWeOs` facade; `xewe::os` became `xewe`; behaviour and NVS keys unchanged.
 6. The six module repositories moved into `xewe-os-modules` 0.2.0 under one contract, validator and tests.
 7. The toolchain and the `validate.sh` copies became the `xewe` Python package; the build counter became `[project] version`.
-8. `xewe-os` became a template that fetches the rest from `xewe.lock`.
+8. `xewe-os` became a template that fetches the rest from `xewe.toml`.
 9. Step 5 (the user's): publish the four repos, tag, archive the replaced ones, run the hardware tests.
 10. Next: after the cooling pad proves the path, xewe-led-os drops its copy of the framework and becomes a project built from this template, moving reusable LED code into modules.

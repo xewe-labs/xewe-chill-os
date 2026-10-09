@@ -6,14 +6,11 @@ not one of the Config.h fan pins: XEWE_TEST_FAN_PIN (PWM into nothing is harmles
 needs a real 4-wire fan: XEWE_TEST_FAN_PWM_PIN + XEWE_TEST_FAN_TACH_PIN wired to it.
 """
 import os
-import re
-from pathlib import Path
 
 import pytest
 
 ID = "fan"
 NAME = "Fan"          # module.properties name == C++ name argument
-MODULE_DIR = Path(__file__).resolve().parents[1] / "src" / "Fan"
 
 
 def test_compiles(compiled):
@@ -60,11 +57,3 @@ def test_rpm_reading(serial):
             break
         serial.collect(silence=1.5, limit=2)   # next 1 s RPM window
     assert m and int(m[1]) > 0, "fan reports 0 RPM at full speed"
-
-
-@pytest.mark.host
-def test_properties_match_source():
-    props = dict(l.split("=", 1) for l in (MODULE_DIR / "module.properties").read_text().splitlines() if "=" in l)
-    cpp = (MODULE_DIR / f"{props['folder']}.cpp").read_text()
-    assert props["id"] == ID and f'"{ID}"' in cpp and f'"{NAME}"' in cpp
-    assert re.fullmatch(r"[a-z][a-z0-9_]{0,14}", props["id"])

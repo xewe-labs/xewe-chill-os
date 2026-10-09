@@ -59,7 +59,8 @@ only momentary.
 
 ### Tests
 
-`tests/test_fan.py` in the project, run with `build/.venv/bin/python -m xewe test`.
+`tests/board/test_fan.py` (and the unit test `tests/unit/test_fan.py`) in the project, run with
+`build/tools/.venv/bin/python -m xewe test` (`--unit-only` for the unit test alone).
 `test_compiles` runs without a board; `test_status`, `test_add_set_remove` (`XEWE_TEST_FAN_PIN`),
 `test_set_rejects_out_of_range`, `test_argc_error` need a provisioned board; `test_rpm_reading`
 requires a real fan (`XEWE_TEST_FAN_PWM_PIN`, `XEWE_TEST_FAN_TACH_PIN`).

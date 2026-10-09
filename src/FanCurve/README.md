@@ -49,9 +49,10 @@ It is product logic, kept in the pad project (MIGRATION.md CP2). Licensed with t
 
 ### Tests
 
-`tests/test_fan_curve.py`: `test_compiles`; host tests: `test_curve_math_host` builds and runs
-`tests/host/test_curve_math.cpp` (g++ `-Werror`, 64 checks of `CurveMath.h`), `test_curve_math_is_pure`,
-`test_properties_match_source`; on a bare board
+`tests/board/test_fan_curve.py`: `test_compiles`; unit tests (`--unit-only`): `test_curve_math_unit_gpp`
+(`tests/unit/test_curve_math.py`) builds and runs `tests/unit/test_curve_math.cpp` (g++ `-Werror`,
+64 checks of `CurveMath.h`), `test_curve_math_is_pure`, and `test_properties_match_source`
+(`tests/unit/test_fan_curve.py`); on a bare board
 `test_status`, `test_add_remove_point`, `test_colours`, `test_offline_sensor_fail_safe`,
 `test_settings_survive_restart` (`$system restart`); `test_closed_loop` requires the assembled pad
 (`XEWE_TEST_PAD_HARDWARE=1`).

@@ -51,11 +51,11 @@ strip on and to the curve colour once a second (not persisted); below the first 
 | | |
 |---|---|
 | Modules | none |
-| Libraries | XeWeCore >=2.0.0,<3.0.0; **FastLED 3.10.3** (`xewe.lock [libraries]`) |
+| Libraries | XeWeCore >=2.0.0,<3.0.0; **FastLED 3.10.3** (`xewe.toml [libraries]`) |
 | Boards | ESP32-C3, ESP32-C6, ESP32-S3 (arduino-esp32 3.x) |
 
 ### Tests
 
-`tests/test_argb.py`: `test_compiles` (no board); `test_status`, `test_rejects_bad_values`,
+`tests/board/test_argb.py`: `test_compiles` (no board); `test_status`, `test_rejects_bad_values`,
 `test_add_rgb_remove` (`XEWE_TEST_ARGB_PIN`; on C3/C6 only with a free RMT channel) on a bare
 board; `test_colour_on_strip` requires a strip and a person (`XEWE_TEST_ARGB_VISUAL=1`).

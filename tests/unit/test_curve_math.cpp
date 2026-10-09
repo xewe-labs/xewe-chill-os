@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2025-2026 Maxim Dokukin (maxdokukin.com)
 // SPDX-License-Identifier: LicenseRef-PolyForm-NC-1.0.0-NoAI
-// xewe-os-laptop-cooling-pad/tests/host/test_curve_math.cpp
+// xewe-os-laptop-cooling-pad/tests/unit/test_curve_math.cpp
 //
-// Host test of src/FanCurve/CurveMath.h (no Arduino): built and run by
-// tests/test_fan_curve.py::test_curve_math_host with g++ -std=c++17 -Wall -Wextra -Werror.
+// Unit test of src/FanCurve/CurveMath.h (no Arduino): built and run by
+// tests/unit/test_curve_math.py::test_curve_math_unit_gpp with g++ -std=c++17 -Wall -Wextra -Werror.
 // Prints one line per check, then "PASSED|FAILED: N check(s), F failure(s)"; exits non-zero on a failure.
 #include <cmath>
 #include <cstdint>

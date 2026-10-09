@@ -1,4 +1,4 @@
-# xewe.lock: pinned inputs of this firmware. Edit by hand or with `xewe lock update`.
+# xewe.toml: this firmware's manifest (pinned inputs). Edit by hand or with `xewe manifest update`.
 # ./setup.sh installs exactly these refs into build/.
 schema = 1
 

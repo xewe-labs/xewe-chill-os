@@ -14,14 +14,14 @@ CLI or the pad's web page at `/pad`.
 
 | | 0.0.12 (old tree) | 2.0.0 (this project) |
 |---|---|---|
-| Framework | private copies of Module, SerialPort, CommandParser, Nvs, System, Wifi, WebInterface (~2.8 k lines) | XeWeCore 2.x + repo modules `wifi`, `web-interface` (pinned in `xewe.lock`, fetched into `build/`) |
-| Pad code | `Fan`, `MLX90614`, `ARGB`, `TempController` inside `src/Modules/` | contract-shaped project-local modules `src/Fan/`, `src/Mlx90614/`, `src/Argb/`, `src/FanCurve/` (each with `module.properties`, `README.md`, tests in `tests/`), plus `src/PadWeb/` |
+| Framework | private copies of Module, SerialPort, CommandParser, Nvs, System, Wifi, WebInterface (~2.8 k lines) | XeWeCore 2.x + repo modules `wifi`, `web-interface` (pinned in `xewe.toml`, fetched into `build/`) |
+| Pad code | `Fan`, `MLX90614`, `ARGB`, `TempController` inside `src/Modules/` | contract-shaped project-local modules `src/Fan/`, `src/Mlx90614/`, `src/Argb/`, `src/FanCurve/` (each with `module.properties`, `README.md`, tests in `tests/board/` and `tests/unit/`), plus `src/PadWeb/` |
 | CLI groups | `$fan`, `$mlx90614` (help said `$temp`), `$argb`, `$tempcontroller` | `$fan`, `$mlx90614`, `$argb`, **`$fan_curve`** (group = module id = NVS namespace) |
 | Settings | NVS strings per item (`fan/fan_cfg_<i>`, `temp/*`, `argb/argb_cfg_<i>`, `tempctrl/curve_data`) | one FlexData blob per module, `<id>/data`, with a `schema` field |
 | Pins | hard-coded C3 pins in module code | `Config.h` `PAD_*` defaults (per chip), applied on first boot, then NVS; `--define` overrides |
-| LED library | Adafruit NeoPixel | **FastLED 3.10.3** (`xewe.lock [libraries]`), per-strip length |
+| LED library | Adafruit NeoPixel | **FastLED 3.10.3** (`xewe.toml [libraries]`), per-strip length |
 | Web page | replaced `/` of a forked web interface | **`/pad`** on the `web-interface` module's server; `/` stays the module's command page |
-| Build | `build/*.sh`, `required_libraries.txt`, release matrix | `./setup.sh`, `xewe build/flash/test`, `xewe.lock`; version 2.0.0 |
+| Build | `build/*.sh`, `required_libraries.txt`, release matrix | `./setup.sh`, `xewe build/flash/test`, `xewe.toml`; version 2.0.0 |
 | Flash wear | `fan.set_all` wrote NVS every second from the curve loop | control-loop writes are RAM only (`persist = false`) |
 | Sensor offline | 2 I2C reads every 500 ms | same fail-safe (255.0 °C → fans at the last point), polls back off to 5 s |
 
@@ -34,16 +34,16 @@ CSS route, the generic XeWe OS 1.0.0 binaries under `static/firmware`, the old f
 ```sh
 export XEWE_TOOLS_SOURCE=…/xewe-os-tools XEWE_CORE_SOURCE=…/xewe-os-core XEWE_MODULES_SOURCE=…/xewe-os-modules  # development (D24); omit to use the lock refs
 ./setup.sh --modules wifi,web-interface [--arduino-data DIR]
-build/.venv/bin/python -m xewe build --all-chips          # c3, c6, s3
+build/tools/.venv/bin/python -m xewe build --all-chips          # c3, c6, s3
 ./run.sh --chip c3                                         # build, flash, serial console
-build/.venv/bin/python -m xewe test --chip c3              # no board: host tests + "compiled, not run"
+build/tools/.venv/bin/python -m xewe test --chip c3              # no board: unit tests + "compiled, not run"
 ```
 
 The four pad modules are not in the modules repo (see Licence), so `setup.sh` selects only `wifi` and
 `web-interface`; the pad modules are declared by hand in `xewe-os-laptop-cooling-pad.ino`, after the
 generated `Modules.h`.
 
-**FastLED** (used by `argb`): `xewe.lock [libraries]` pins `FastLED = 3.10.3` explicitly, and the
+**FastLED** (used by `argb`): `xewe.toml [libraries]` pins `FastLED = 3.10.3` explicitly, and the
 lock wins. The modules repo's library catalogue (`xewe-os-modules/libraries.toml`, also FastLED
 3.10.3) is only the fallback `setup` uses for a module's `depends_libraries` the lock does not pin;
 keep the explicit pin here, because the pad modules are not in that repo and declare no
@@ -56,7 +56,7 @@ keep the explicit pin here, because the pad modules are not in that repo and dec
   every serial test `compiled, not run (board access disabled ...)` and exits 0; `flash`, `provision`
   and `boards` exit 4.
 - `xewe test -v` (flag after the command) now works, as does `xewe -v test`.
-- The host tests need only Python and `g++`: `xewe test --host-only` (seconds, no firmware build).
+- The unit tests need only Python and `g++`: `xewe test --unit-only` (seconds, no firmware build).
 
 ## First boot
 
@@ -90,7 +90,7 @@ Defaults come from `Config.h` (`#ifndef`-guarded, so `--define` wins). 255 = not
   S3 test session gets safe pins too). The same set as explicit defines, for a build or another board:
 
 ```sh
-build/.venv/bin/python -m xewe build --chip s3 \
+build/tools/.venv/bin/python -m xewe build --chip s3 \
   --define PAD_FAN1_PWM=4 --define PAD_FAN1_TACH=5 --define PAD_FAN2_PWM=6 --define PAD_FAN2_TACH=7 \
   --define PAD_MLX_SDA=8 --define PAD_MLX_SCL=9 --define PAD_ARGB1_PIN=10 --define PAD_ARGB2_PIN=11
 ```
@@ -138,21 +138,22 @@ With WiFi connected (the `wifi` module) and `web-interface` enabled, the boot lo
 
 ## Tests
 
-`build/.venv/bin/python -m xewe test` runs `tests/` (the pad modules) plus the `wifi` and
-`web-interface` module tests. Without a board: host tests run, every `test_compiles` builds the
+`build/tools/.venv/bin/python -m xewe test` runs `tests/` (the pad modules: board tests in
+`tests/board/`, unit tests in `tests/unit/`) plus the `wifi` and `web-interface` module tests.
+Without a board: unit tests run, every `test_compiles` builds the
 firmware, every serial test is reported "compiled, not run". With a board the session flashes once and
 needs a **provisioned** board (first boot answered, e.g. `xewe provision`).
 
-| File | Bare board (nothing wired) | Needs env / hardware |
+| `tests/board/` file | Bare board (nothing wired) | Needs env / hardware |
 |---|---|---|
 | `test_fan.py` | `test_status`, `test_set_rejects_out_of_range`, `test_argc_error` | `test_add_set_remove`: `XEWE_TEST_FAN_PIN` (free GPIO, not a `PAD_FAN*` pin); `test_rpm_reading`: a real fan on `XEWE_TEST_FAN_PWM_PIN` / `XEWE_TEST_FAN_TACH_PIN` |
 | `test_mlx90614.py` | `test_status`, `test_set_addr_validation` (restores the address), `test_set_pins_rejects_same_pin` | `test_scan_bare_bus`: `XEWE_TEST_MLX_SDA` / `XEWE_TEST_MLX_SCL` (restores the pins; a scan without pull-ups can take up to a minute); `test_read_temperature`: a sensor, `XEWE_TEST_MLX_PRESENT=1` |
 | `test_argb.py` | `test_status`, `test_rejects_bad_values` | `test_add_rgb_remove`: `XEWE_TEST_ARGB_PIN` (C3/C6 have 2 RMT channels, both used by the default strips: run it on an S3, or remove a strip first); `test_colour_on_strip`: `XEWE_TEST_ARGB_VISUAL=1` |
 | `test_fan_curve.py` | `test_status`, `test_add_remove_point`, `test_colours`, `test_offline_sensor_fail_safe`, `test_settings_survive_restart` (`$system restart`) | `test_closed_loop`: the assembled pad, `XEWE_TEST_PAD_HARDWARE=1` |
 
-Each file also has host tests (properties vs source). `test_fan_curve.py::test_curve_math_host`
-compiles `tests/host/test_curve_math.cpp` with the host `g++ -std=c++17 -Wall -Wextra -Werror` and
-runs it: 64 checks of `src/FanCurve/CurveMath.h`, the pure curve logic (interpolation, clamps, sorted
+Each module also has a unit test in `tests/unit/test_<file>.py` (properties vs source).
+`tests/unit/test_curve_math.py::test_curve_math_unit_gpp` compiles `tests/unit/test_curve_math.cpp`
+with `g++ -std=c++17 -Wall -Wextra -Werror` on the developer machine and runs it: 64 checks of `src/FanCurve/CurveMath.h`, the pure curve logic (interpolation, clamps, sorted
 and duplicate-point validation, schema version, LED hysteresis, colours); it skips when `g++` is
 missing. Tests that need wiring skip with the reason when their variable is unset.
 
@@ -164,7 +165,7 @@ attached, add `--port /dev/cu.usbmodemXXXX` otherwise). Do not set `XEWE_NO_BOAR
 
 ```sh
 ./setup.sh --modules wifi,web-interface
-X=build/.venv/bin/python
+X=build/tools/.venv/bin/python
 
 # 1a. the real pad (ESP32-C3): default Config.h pins
 $X -m xewe flash --chip c3 --erase       # --erase wipes NVS for a clean first boot; drop it to keep provisioning
