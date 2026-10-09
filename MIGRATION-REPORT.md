@@ -362,3 +362,41 @@ Builds ran in a scratchpad copy of this project (`./setup.sh --modules wifi,web-
 - Validator (staging copy of `done/xewe-os-modules` + the 4 pad modules) `--harness` this project →
   13 modules, 0 errors, 0 warnings (`r1-validate-pad.log`).
 - Not verified: everything at runtime (no board).
+
+## CP1 restructure (CP10, 2026-10-09)
+
+Owner decision CP1: GPL-3.0, `fan` (with the curve) and `mlx90614` extracted into
+`done/xewe-os-modules` (branch `led-modules`, uncommitted), `argb` replaced by the repo `led` module,
+the project keeps only `src/PadWeb/`. Decisions CP11-CP21 in `wip/xewe-os-laptop-cooling-pad/MIGRATION.md`.
+Logs: `test_logs/2026-10-09-pad-extract/`. No git writes, no board (`XEWE_NO_BOARD=1`).
+
+| Before (night run) | After |
+|---|---|
+| `src/Fan/` | repo `modules/fan/` (`Fan fan(os);`), curve merged in: `src/Fan/Curve.h` (was `src/FanCurve/CurveMath.h`), `$fan curve list/add/remove/set`, `$fan temp`, `fan.set_temperature(c, origin)`; NVS `fan/data` + `fan/curve` |
+| `src/FanCurve/` (`$fan_curve`) | gone: curve → `fan`; colours → PadWeb (`$pad set_cold/set_hot`, NVS `pad/data`) |
+| `src/Mlx90614/` | repo `modules/mlx90614/` (`Mlx90614 mlx90614(os);`), `Mlx90614Listener::on_temperature`, `Convert.h` (pure), bounded scan, NaN offline (no 255.0 error value) |
+| `src/Argb/` (2 strips, FastLED) | repo `led` (one strip); PadWeb shows the curve colour with `led.fill()` and its own glide (`src/PadWeb/Glide.h`, R1 clamp kept) |
+| `src/PadWeb/` (plain class) | project-local module `pad` (`PadWeb pad_web(os, fan, mlx90614, led);`, the only declare in the `.ino`): sensor → `fan.set_temperature` (listener registered in its constructor), strip colour, `/pad` page |
+| `Config.h` `PAD_*` | module build defines `FAN1_PWM`…, `MLX90614_SDA/SCL/ADDR`, `LED_PIN_DATA`/`LED_COUNT`, per-chip defaults in the module headers |
+| PolyForm-NC + No-AI (`LICENSE.md`, `LICENSE-NO-AI.md`) | GPL-3.0-only, `LICENSE.txt` = `done/xewe-os/LICENSE.txt`; SPDX `GPL-3.0-only` on every project source |
+| `tests/` 4 board + 6 unit files | `tests/board/test_pad.py`, `tests/unit/test_pad.py` + `test_glide.cpp`; module tests moved with the modules (curve test: 73 → 87 checks with `curve set` parsing) |
+
+R1 fixes carried over: tach 64-bit maths, shared-pin refusal (`fan`), MLX error flag and short read
+(`mlx90614`, now counted as `Read errors`), one NVS write per save (POST `/ui/config`: at most one
+write per changed blob, `pad/data` and `fan/curve`), schema mismatch never overwritten at boot (now in
+`fan` fans + curve, `mlx90614` and `pad` alike), glide clamp (`Glide.h`, 16 host checks).
+
+**Verification** (all exit 0):
+
+| Step | Result |
+|---|---|
+| modules `tools/validate.py --write-index`, then `--harness` this project | 9 modules, 0 errors, 0 warnings |
+| `./setup.sh </dev/null` from scratch (`build/` deleted, local sources) | wifi, web-interface, fan, mlx90614, led; ArduinoJson 7.4.3, FastLED 3.10.3 |
+| `xewe build --all-chips` | C3 1 503 321 B (71 %, was 70), C6 1 512 106 B (72 %, was 71), S3 1 361 800 B (64 %, was 64); 0 / 0 / 6 warnings, the 6 all in FastLED `I2SClockLessLedDriveresp32s3.h:397-398` (0 project warnings) |
+| `xewe test --unit-only` | 26 unit passed (project 6, fan 4 incl. the 87-check curve binary, mlx90614 4, led 10, wifi 1, web-interface 1) |
+| `xewe test --no-board` | 26 unit passed, 6 `test_compiles` passed, 42 compiled, not run, 0 failed |
+| harness `migration/phase_2/hw-s3`, `setup --modules all` + `build --chip s3` | 9 modules, 1 481 088 B (70 %), 0 warnings; `--unit-only` 24 passed |
+
+Flash grew ~34 KB on C3/C6 (the `led` module's render task and 7 modes replace the 400-line `argb`).
+Not verified: anything at runtime (no board), `led.fill()` at 50 Hz next to the render task, the
+bounded scan's timing on a real bare bus, the `/pad` page against the new JSON.

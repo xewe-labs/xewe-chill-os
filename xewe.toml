@@ -1,5 +1,6 @@
 # xewe.toml: this firmware's manifest (pinned inputs). Edit by hand or with `xewe manifest update`.
-# ./setup.sh installs exactly these refs into build/.
+# ./setup.sh installs exactly these refs into build/. A tag freezes; ref = "latest" tracks the newest
+# commit of the default branch (development); `xewe manifest update` freezes it at the newest tag.
 schema = 1
 
 [project]
@@ -9,16 +10,16 @@ chip = "c3"
 
 [core]
 repo = "https://github.com/xewe-labs/xewe-os-core"
-ref = "2.0.1"
+ref = "latest"
 
 [modules]
 repo = "https://github.com/xewe-labs/xewe-os-modules"
-ref = "v0.2.0"
-selected = ["wifi", "web-interface"]
+ref = "latest"
+selected = ["wifi", "web-interface", "fan", "mlx90614", "led"]
 
 [tools]
 repo = "https://github.com/xewe-labs/xewe-os-tools"
-ref = "v0.1.1"
+ref = "latest"
 
 [libraries]
 ArduinoJson = { repo = "https://github.com/bblanchon/ArduinoJson", ref = "v7.4.3" }
