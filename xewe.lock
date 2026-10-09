@@ -1,0 +1,25 @@
+# xewe.lock: pinned inputs of this firmware. Edit by hand or with `xewe lock update`.
+# ./setup.sh installs exactly these refs into build/.
+schema = 1
+
+[project]
+name = "xewe-os-laptop-cooling-pad"
+version = "2.0.0"
+chip = "c3"
+
+[core]
+repo = "https://github.com/xewe-labs/xewe-os-core"
+ref = "2.0.1"
+
+[modules]
+repo = "https://github.com/xewe-labs/xewe-os-modules"
+ref = "v0.2.0"
+selected = ["wifi", "web-interface"]
+
+[tools]
+repo = "https://github.com/xewe-labs/xewe-os-tools"
+ref = "v0.1.1"
+
+[libraries]
+ArduinoJson = { repo = "https://github.com/bblanchon/ArduinoJson", ref = "v7.4.3" }
+FastLED = { repo = "https://github.com/FastLED/FastLED", ref = "3.10.3" }
