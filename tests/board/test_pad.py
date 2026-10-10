@@ -55,7 +55,17 @@ def test_offline_sensor_fail_safe(serial):
     serial.command("$pad status", expect=r"Strip: lit #FF0000", timeout=5)   # NaN counts as hot
 
 
+def test_closed_loop(serial):
+    if not os.environ.get("XEWE_TEST_PAD_HARDWARE"):
+        pytest.skip("requires hardware: the assembled pad (sensor, fans with tach); XEWE_TEST_PAD_HARDWARE=1")
+    serial.command("$mlx90614 read", expect=r"Object: -?\d+\.\d+ C", timeout=10)
+    serial.collect(silence=2.5, limit=5)
+    serial.command("$fan status", expect=r"Temperature: -?\d+\.\d+ C \(source\)", timeout=5)
+    serial.command("$fan status", expect=r"\d+ RPM", timeout=5)
+
+
 def test_settings_survive_restart(serial):
+    # last in the file: a software restart that goes silent (testing v1 F7) then takes down only this test
     serial.command("$pad set_hot #FF8000", expect=r"Hot color set to #FF8000", timeout=5)
     try:
         serial.send("$system restart")
@@ -65,12 +75,3 @@ def test_settings_survive_restart(serial):
         serial.command("$pad status", expect=r"Hot color: #FF8000", timeout=5)
     finally:
         serial.command("$pad set_hot #FF0000", expect=r"Hot color set to #FF0000", timeout=5)
-
-
-def test_closed_loop(serial):
-    if not os.environ.get("XEWE_TEST_PAD_HARDWARE"):
-        pytest.skip("requires hardware: the assembled pad (sensor, fans with tach); XEWE_TEST_PAD_HARDWARE=1")
-    serial.command("$mlx90614 read", expect=r"Object: -?\d+\.\d+ C", timeout=10)
-    serial.collect(silence=2.5, limit=5)
-    serial.command("$fan status", expect=r"Temperature: -?\d+\.\d+ C \(source\)", timeout=5)
-    serial.command("$fan status", expect=r"\d+ RPM", timeout=5)

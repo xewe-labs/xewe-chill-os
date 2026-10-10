@@ -15,6 +15,9 @@ concurrency:
 jobs:
   build:
     uses: xewe-labs/xewe-os-tools/.github/workflows/xewe-build.yml@main
+    with:
+      # lint (xewe format --check, brand-lint) is advisory until the whitespace commits land; true makes it fail the run
+      strict_lint: false
   release:
     needs: build
     if: startsWith(github.ref, 'refs/tags/v')
