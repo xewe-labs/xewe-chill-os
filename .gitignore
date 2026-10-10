@@ -14,3 +14,6 @@ src/Modules.h
 .vscode/
 *.swp
 *~
+
+# Python bytecode written by xewe test / pytest
+__pycache__/
