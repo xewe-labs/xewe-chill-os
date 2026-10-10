@@ -30,7 +30,7 @@ def test_status(serial):
 def test_colours(serial):
     serial.command("$pad set_cold #12abef", expect=r"Cold color set to #12ABEF", timeout=5)
     serial.command("$pad set_cold 00ffff", expect=r"Cold color set to #00FFFF", timeout=5)
-    serial.command("$pad set_hot red", expect=r"Failed to set hot color\. Use #RRGGBB\.", timeout=5)
+    serial.command("$pad set_hot red", expect=r"Failed to set hot color\. Use RRGGBB or #RRGGBB\.", timeout=5)
 
 
 def test_lights_toggle(serial):
@@ -40,7 +40,7 @@ def test_lights_toggle(serial):
         serial.command("$led status", expect=r"Source:\s+mode", timeout=5)
         serial.command("$pad lights maybe", expect=r"Usage: \$pad lights <on\|off>", timeout=5)
     finally:
-        serial.command("$pad lights on", expect=r"Pad lights on: the strip follows the temperature\.", timeout=5)
+        serial.command("$pad lights on", expect=r"Pad lights on: the strip shows the temperature\.", timeout=5)
     serial.collect(silence=0.5, limit=2)
     serial.command("$led status", expect=r"Source:\s+fill", timeout=5)   # PadWeb owns the strip again
 
@@ -62,7 +62,7 @@ def test_settings_survive_restart(serial):
         m = wait_for_banner(serial, f"{BOOT_READY}|{BOOT_UNPROVISIONED}", 90, reset=False)
         assert m[0] == BOOT_READY, "board came back unprovisioned"
         serial.collect(silence=0.5)
-        serial.command("$pad status", expect=r"Hot colour: #FF8000", timeout=5)
+        serial.command("$pad status", expect=r"Hot color: #FF8000", timeout=5)
     finally:
         serial.command("$pad set_hot #FF0000", expect=r"Hot color set to #FF0000", timeout=5)
 

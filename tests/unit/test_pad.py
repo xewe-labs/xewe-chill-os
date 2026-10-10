@@ -51,6 +51,8 @@ def test_glue_wiring():
     frame = cpp[cpp.index("void PadWeb::update_lights"):cpp.index("// ---- settings")]
     for persisted in ("led.set_state", "led.set_color", "led.set_brightness", "save(", "write_flex"):
         assert persisted not in frame, persisted
+    # re-fill only when the fill ended or the colour changed, not every frame (CP29)
+    assert "led.fill_active()" in frame and "led.fill_color()" in frame
 
 
 @pytest.mark.unit

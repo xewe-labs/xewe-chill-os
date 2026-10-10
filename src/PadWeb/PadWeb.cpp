@@ -45,7 +45,7 @@ PadWeb::PadWeb(xewe::Os& host, Fan& fan_ref, Mlx90614& mlx90614_ref, Led& led_re
       : xewe::Module(host,
                /* id                  */ "pad",
                /* name                */ "Pad",
-               /* description         */ "Cooling pad glue: sensor -> fan curve, strip colour along the curve, the /pad page",
+               /* description         */ "Feeds the sensor to the fan curve, colours the strip by temperature, serves the pad page at /",
                /* requires_init_setup */ false,
                /* can_be_disabled     */ false,
                /* has_cli_cmds        */ true)
@@ -60,7 +60,7 @@ PadWeb::PadWeb(xewe::Os& host, Fan& fan_ref, Mlx90614& mlx90614_ref, Led& led_re
 
     register_command({
         "set_cold",
-        "Set the strip colour at the curve's first point: <#RRGGBB|RRGGBB>",
+        "Set the strip colour at the curve's first point (cold): <RRGGBB|#RRGGBB>",
         "$pad set_cold 00FFFF",
         1,
         [this](xewe::span<const std::string> args){ set_cold_cmd(args); }
@@ -68,7 +68,7 @@ PadWeb::PadWeb(xewe::Os& host, Fan& fan_ref, Mlx90614& mlx90614_ref, Led& led_re
 
     register_command({
         "set_hot",
-        "Set the strip colour at the curve's last point: <#RRGGBB|RRGGBB>",
+        "Set the strip colour at the curve's last point (hot): <RRGGBB|#RRGGBB>",
         "$pad set_hot FF0000",
         1,
         [this](xewe::span<const std::string> args){ set_hot_cmd(args); }
@@ -76,7 +76,7 @@ PadWeb::PadWeb(xewe::Os& host, Fan& fan_ref, Mlx90614& mlx90614_ref, Led& led_re
 
     register_command({
         "lights",
-        "Strip follows the temperature (on) or the led module's modes (off): <on|off>",
+        "Strip shows the temperature (on) or the led mode (off): <on|off>",
         "$pad lights on",
         1,
         [this](xewe::span<const std::string> args){ lights_cmd(args); }
@@ -84,7 +84,7 @@ PadWeb::PadWeb(xewe::Os& host, Fan& fan_ref, Mlx90614& mlx90614_ref, Led& led_re
 
     register_command({
         "print_json",
-        "Print the curve colours and the strip state as JSON",
+        "Print the colours, the curve and the strip state as JSON",
         "$pad print_json",
         0,
         [this](xewe::span<const std::string>){ os.serial.print(get_ui_json() + "\n" + get_lights_json()); }
@@ -99,9 +99,9 @@ void PadWeb::begin_routines_required() {
     } else if (!stored.has("schema") || stored.schema != PadStore::SCHEMA) {
         // has(): a blob without a readable `schema` field is foreign too, not "schema 1 by default" (CC7)
         // another firmware's layout: never reinterpret it, never overwrite it at boot
-        os.serial.print("Pad: stored settings have schema " + std::to_string(stored.schema) +
-                        ", this firmware reads schema " + std::to_string(PadStore::SCHEMA) +
-                        "; using the defaults (the stored blob is left untouched until the next change)");
+        os.serial.print("Pad: stored colours are from another firmware (schema " + std::to_string(stored.schema) +
+                        ", expected " + std::to_string(PadStore::SCHEMA) +
+                        "); using the defaults until the next change");
         data = PadStore{};
     } else {
         data = std::move(stored);
@@ -128,10 +128,10 @@ void PadWeb::reset(const bool verbose, const bool do_restart, const bool keep_en
 
 std::string PadWeb::status(const bool verbose) const {
     std::string s = Module::status(false);
-    s += std::string("\n  Lights: ") + (data.lights ? "follow the temperature" : "off (led modes)");
-    s += "\n  Cold colour: " + data.cold_color + "\n  Hot colour: " + data.hot_color;
+    s += std::string("\n  Lights: ") + (data.lights ? "on (strip shows the temperature)" : "off (strip shows the led mode)");
+    s += "\n  Cold color: " + data.cold_color + "\n  Hot color: " + data.hot_color;
     char buf[64];
-    if (std::isnan(temperature)) snprintf(buf, sizeof(buf), "\n  Temperature: offline");
+    if (std::isnan(temperature)) snprintf(buf, sizeof(buf), "\n  Temperature: offline (no sensor reading)");
     else                         snprintf(buf, sizeof(buf), "\n  Temperature: %.2f C", temperature);
     s += buf;
     if (data.lights) {
@@ -169,8 +169,10 @@ void PadWeb::update_lights(uint32_t now) {
         target = {static_cast<float>(c.r), static_cast<float>(c.g), static_cast<float>(c.b)};
     }
     pad_fx::glide_step(shown, target, pad_fx::glide_factor(config.glide_speed, dt));
-    // every frame: a `$led mode set` or `$led fill off` ends the fill, the next frame takes it back
-    led.fill({pad_fx::to_byte(shown.r), pad_fx::to_byte(shown.g), pad_fx::to_byte(shown.b)});
+    // a `$led mode set` or `$led fill off` ends the fill: take the strip back; otherwise fill only on a change
+    const LedRgb c{pad_fx::to_byte(shown.r), pad_fx::to_byte(shown.g), pad_fx::to_byte(shown.b)};
+    const LedRgb f = led.fill_color();
+    if (!filling || !led.fill_active() || f.r != c.r || f.g != c.g || f.b != c.b) led.fill(c);
     filling = true;
 }
 
@@ -316,12 +318,12 @@ void PadWeb::handle_ui_config_post() {
 
 void PadWeb::set_cold_cmd(xewe::span<const std::string> args) {
     if (set_cold_color(args[0])) os.serial.print("Cold color set to " + data.cold_color);
-    else                         os.serial.print("Failed to set cold color. Use #RRGGBB.");
+    else                         os.serial.print("Failed to set cold color. Use RRGGBB or #RRGGBB.");
 }
 
 void PadWeb::set_hot_cmd(xewe::span<const std::string> args) {
     if (set_hot_color(args[0])) os.serial.print("Hot color set to " + data.hot_color);
-    else                        os.serial.print("Failed to set hot color. Use #RRGGBB.");
+    else                        os.serial.print("Failed to set hot color. Use RRGGBB or #RRGGBB.");
 }
 
 void PadWeb::lights_cmd(xewe::span<const std::string> args) {
@@ -332,6 +334,6 @@ void PadWeb::lights_cmd(xewe::span<const std::string> args) {
         os.serial.print("Usage: $pad lights <on|off>");
         return;
     }
-    os.serial.print(std::string("Pad lights ") + (data.lights ? "on: the strip follows the temperature."
+    os.serial.print(std::string("Pad lights ") + (data.lights ? "on: the strip shows the temperature."
                                                               : "off: the strip shows the led module's mode."));
 }
