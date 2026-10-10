@@ -21,7 +21,7 @@ web_interface(os, wifi); Fan fan(os); Mlx90614 mlx90614(os); Led led(os);`).
 | Module (id) | Role in the pad | README |
 |---|---|---|
 | `wifi` (`wifi`) | station mode, keeps the connection | `build/modules/src/Wifi/` · repo `modules/wifi` |
-| `web-interface` (`web_interface`) | HTTP server; `/` command page, PadWeb adds `/pad` | repo `modules/web-interface` |
+| `web-interface` (`web_interface`) | HTTP server; command page at `/console`, PadWeb adds `/pad` and takes `/` (root hook) | repo `modules/web-interface` |
 | `fan` (`fan`) | 2 PWM fans + tachometers, **the fan curve** (`$fan curve ...`), fed by `set_temperature()` | repo `modules/fan` |
 | `mlx90614` (`mlx90614`) | the IR sensor, bounded bus scan, listeners | repo `modules/mlx90614` |
 | `led` (`led`) | the WS2812B strip (FastLED, 50 fps render task); PadWeb drives it with `led.fill()` | repo `modules/led` |
@@ -33,7 +33,7 @@ web_interface(os, wifi); Fan fan(os); Mlx90614 mlx90614(os); Led led(os);`).
 `xewe::Module` (id `pad`, NVS `pad/data`, cannot be disabled, asks nothing at first boot):
 
 1. **Sensor → curve.** PadWeb is an `Mlx90614Listener` and registers itself in its constructor
-   (`mlx90614.add_listener(this)`). Every poll calls `fan.set_temperature(online ? object : NaN, this)`.
+   (`mlx90614.listeners.add(this)`, the core 2.1 `ListenerSet`). Every poll calls `fan.set_temperature(online ? object : NaN, this)`.
    Chosen over a link in `setup()` because the listener needs an object anyway and PadWeb already
    holds both references. The `fan` module knows nothing about the sensor: offline (NaN) or a source
    silent for 10 s → every fan at the last point's speed (fail-safe).
@@ -44,9 +44,10 @@ web_interface(os, wifi); Fan fan(os); Mlx90614 mlx90614(os); Led led(os);`).
    fill, not `led.set_state(false)` (that one is persisted). `$pad lights off` calls
    `led.clear_fill()` and the `led` module's own modes take over; `$pad lights on` takes the strip back.
    While lights are on, a `$led mode set` or `$led fill off` lasts one frame.
-3. **Web page.** `attach(web_interface.get_server())` in `setup()` adds `/pad` and the JSON routes.
+3. **Web page.** `attach(web_interface)` in `setup()` adds `/pad` and the JSON routes and hands `/` to
+   the pad page (`web_interface.set_root(...)`); the module's command console moves to `/console`.
 
-Colours (`#RRGGBB`, with or without `#`) and the lights switch live in `pad/data` (FlexData,
+Colours (`#RRGGBB`, with or without `#`, parsed by the core's `xewe::str::parse_hex_color`) and the lights switch live in `pad/data` (FlexData,
 schema 1; a foreign schema is never overwritten at boot). The curve itself lives in the `fan` module
 (`fan/curve`).
 
@@ -60,7 +61,7 @@ schema 1; a foreign schema is never overwritten at boot). The curve itself lives
 | Settings | NVS strings per item | FlexData blobs with a `schema` field: `fan/data`, `fan/curve`, `mlx90614/data`, `pad/data`; `led` keys |
 | Pins | hard-coded C3 pins | module build defines with per-chip defaults (below), then NVS / commands |
 | LEDs | Adafruit NeoPixel, two strips on two pins | `led` module (FastLED 3.10.3), **one strip per firmware** (both strips on one data pin) |
-| Web page | replaced `/` of a forked web interface | `/pad` on the `web-interface` server; `/` stays the module's command page |
+| Web page | replaced `/` of a forked web interface | `/` and `/pad` on the `web-interface` server (root hook); the module's command page at `/console` |
 | Build | `build/*.sh`, `required_libraries.txt`, release matrix | `./setup.sh`, `xewe build/flash/test`, `xewe.toml`; version 2.0.0 |
 | Flash wear | `fan.set_all` wrote NVS every second | control loop and LED frames are RAM only |
 | Licence | PolyForm Noncommercial + No-AI addendum | **GPL-3.0-only** (owner decision CP1, 2026-10-09) |
@@ -154,8 +155,8 @@ With WiFi connected the boot log prints the device IP.
 
 | URL | |
 |---|---|
-| `http://<ip>/pad` | the pad page (curve editor, colours, live operating point), assets unchanged from 0.0.12 |
-| `http://<ip>/` | the `web-interface` module's command page |
+| `http://<ip>/`, `http://<ip>/pad` | the pad page (curve editor, colours, live operating point), assets unchanged from 0.0.12; `/` through the web-interface root hook |
+| `http://<ip>/console` | the `web-interface` module's command page |
 | `GET /api/state` | `{"fan_data","argb_data","sensor_data","ui_config"}` (polled by the page every second; `argb_data` is now the strip state from PadWeb) |
 | `GET /fan/data`, `/led/data`, `/mlx90614/data`, `/ui/config` | JSON of fan, strip, sensor, curve + colours |
 | `POST /ui/config` | `{"temp_curve":[{"temp","speed"}],"curve_edge_colors":{"start","end"}}`: at most one NVS write per changed blob (`pad/data`, `fan/curve`) |

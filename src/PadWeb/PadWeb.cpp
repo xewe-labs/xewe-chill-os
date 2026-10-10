@@ -16,16 +16,19 @@
 
 
 namespace {
+// hex colours: the core's helpers (core 2.1, Utils/String.h): "#rrggbb" or "rrggbb", either case
 curve_math::Rgb parse_or(const std::string& hex, curve_math::Rgb fallback) {
     curve_math::Rgb c = fallback;
-    curve_math::parse_hex_color(hex, c.r, c.g, c.b);
+    xewe::str::parse_hex_color(hex, c.r, c.g, c.b);     // outputs untouched on failure
     return c;
 }
 
-std::string hex_of(uint8_t r, uint8_t g, uint8_t b) {
-    char buf[8];
-    snprintf(buf, sizeof(buf), "#%02X%02X%02X", r, g, b);
-    return buf;
+// any accepted form -> the stored form "#RRGGBB"; false (out untouched) when not a colour
+bool normalize_hex(const std::string& hex, std::string& out) {
+    uint8_t r, g, b;
+    if (!xewe::str::parse_hex_color(hex, r, g, b)) return false;
+    out = xewe::str::to_hex_color(r, g, b);
+    return true;
 }
 
 bool same_curve(const std::vector<FanCurvePoint>& a, const std::vector<FanCurvePoint>& b) {
@@ -53,7 +56,7 @@ PadWeb::PadWeb(xewe::Os& host, Fan& fan_ref, Mlx90614& mlx90614_ref, Led& led_re
 {
     // no add_requirement(): the page and the strip keep working while fan or mlx90614 is disabled
     // the glue: every sensor reading (and every offline poll) goes to the fan curve
-    mlx90614.add_listener(this);
+    mlx90614.listeners.add(this);
 
     register_command({
         "set_cold",
@@ -93,7 +96,8 @@ void PadWeb::begin_routines_required() {
     if (!os.nvs.read_flex(id, "data", stored)) {
         data = PadStore{};                                  // first boot: store the defaults
         save();
-    } else if (stored.schema != PadStore::SCHEMA) {
+    } else if (!stored.has("schema") || stored.schema != PadStore::SCHEMA) {
+        // has(): a blob without a readable `schema` field is foreign too, not "schema 1 by default" (CC7)
         // another firmware's layout: never reinterpret it, never overwrite it at boot
         os.serial.print("Pad: stored settings have schema " + std::to_string(stored.schema) +
                         ", this firmware reads schema " + std::to_string(PadStore::SCHEMA) +
@@ -102,8 +106,8 @@ void PadWeb::begin_routines_required() {
     } else {
         data = std::move(stored);
         std::string norm;
-        if (!curve_math::normalize_hex_color(data.cold_color, norm)) data.cold_color = PadStore{}.cold_color;
-        if (!curve_math::normalize_hex_color(data.hot_color, norm))  data.hot_color  = PadStore{}.hot_color;
+        if (!normalize_hex(data.cold_color, norm)) data.cold_color = PadStore{}.cold_color;
+        if (!normalize_hex(data.hot_color, norm))  data.hot_color  = PadStore{}.hot_color;
     }
     last_frame_ms = millis();
 }
@@ -132,7 +136,7 @@ std::string PadWeb::status(const bool verbose) const {
     s += buf;
     if (data.lights) {
         s += "\n  Strip: " + std::string(lit ? "lit " : "dark ") +
-             hex_of(pad_fx::to_byte(shown.r), pad_fx::to_byte(shown.g), pad_fx::to_byte(shown.b));
+             xewe::str::to_hex_color(pad_fx::to_byte(shown.r), pad_fx::to_byte(shown.g), pad_fx::to_byte(shown.b));
     }
     if (verbose) os.serial.print(s);
     return s;
@@ -174,7 +178,7 @@ void PadWeb::update_lights(uint32_t now) {
 
 bool PadWeb::set_cold_color(const std::string& hex, bool persist) {
     std::string norm;
-    if (!curve_math::normalize_hex_color(hex, norm)) return false;
+    if (!normalize_hex(hex, norm)) return false;
     if (norm == data.cold_color) return true;
     data.cold_color = norm;
     if (persist) save();
@@ -183,7 +187,7 @@ bool PadWeb::set_cold_color(const std::string& hex, bool persist) {
 
 bool PadWeb::set_hot_color(const std::string& hex, bool persist) {
     std::string norm;
-    if (!curve_math::normalize_hex_color(hex, norm)) return false;
+    if (!normalize_hex(hex, norm)) return false;
     if (norm == data.hot_color) return true;
     data.hot_color = norm;
     if (persist) save();
@@ -219,7 +223,7 @@ std::string PadWeb::get_ui_json() const {
 std::string PadWeb::get_lights_json() const {
     JsonDocument doc;
     doc["lights"] = data.lights;
-    doc["shown"]  = hex_of(pad_fx::to_byte(shown.r), pad_fx::to_byte(shown.g), pad_fx::to_byte(shown.b));
+    doc["shown"]  = xewe::str::to_hex_color(pad_fx::to_byte(shown.r), pad_fx::to_byte(shown.g), pad_fx::to_byte(shown.b));
     if (std::isnan(temperature)) doc["temperature"] = nullptr;
     else                         doc["temperature"] = temperature;
     doc["led_brightness"] = led.get_brightness();
@@ -231,12 +235,14 @@ std::string PadWeb::get_lights_json() const {
 
 // ---- web ----------------------------------------------------------------------------------------
 
-void PadWeb::attach(WebServer& srv) {
-    server = &srv;
+void PadWeb::attach(WebInterface& web) {
+    server = &web.get_server();
 
     server->on("/pad", HTTP_GET, [this]() {
         server->send_P(200, "text/html", INDEX_HTML);
     });
+    // the pad page owns `/` (web-interface root hook); the command console stays at /console
+    web.set_root([this]() { server->send_P(200, "text/html", INDEX_HTML); });
     server->on("/static/styles.css", HTTP_GET, [this]() {
         server->send_P(200, "text/css", STYLES_CSS);
     });
@@ -298,7 +304,7 @@ void PadWeb::handle_ui_config_post() {
             points.push_back(p);
         }
         const std::vector<FanCurvePoint> old = fan.get_curve();
-        const bool set = fan.set_curve(std::move(points), false);
+        const bool set = fan.set_curve(std::move(points), false, this);
         ok &= set;
         if (set && !same_curve(old, fan.get_curve())) fan.save_curve();
     }

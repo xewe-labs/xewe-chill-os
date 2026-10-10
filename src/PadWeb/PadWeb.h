@@ -10,8 +10,9 @@
 //      colour at the first point, hot at the last, a blend in between; the colour glides (Glide.h)
 //      and is shown with led.fill() (RAM only, no NVS write per frame). `$pad lights off` hands the
 //      strip back to the led module's modes;
-//   3. serves the pad page at /pad and its JSON API on the web-interface module's server
-//      (attach(web_interface.get_server()), MIGRATION.md CP5).
+//   3. serves the pad page at /pad and at / (web-interface root hook, core 2.1 pass; the command
+//      console moves to /console) and its JSON API on the web-interface module's server
+//      (attach(web_interface), MIGRATION.md CP5, CP22).
 #pragma once
 
 #include <WebServer.h>
@@ -64,8 +65,9 @@ public:
     // the sensor -> curve link (Mlx90614Listener)
     void                        on_temperature              (float object_c, float ambient_c, bool online) override;
 
-    // registers the page and the JSON routes; call once, before or after the server begins
-    void                        attach                      (WebServer& server);
+    // registers the page (/pad and, through web.set_root, /) and the JSON routes on web's server;
+    // call once from setup(), before os.begin()
+    void                        attach                      (WebInterface& web);
 
     // "#RRGGBB" or "RRGGBB"; an unchanged colour is not written again. persist = false: RAM only
     bool                        set_cold_color              (const std::string& hex, bool persist = true);

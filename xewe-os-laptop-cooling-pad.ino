@@ -34,8 +34,9 @@ XeWeOs os({
 PadWeb pad_web(os, fan, mlx90614, led);
 
 void setup() {
-    // routes on the web-interface module's server: the pad page at /pad, its JSON API beside it
-    pad_web.attach(web_interface.get_server());
+    // routes on the web-interface module's server: the pad page at /pad and / (root hook; the command
+    // console moves to /console), its JSON API beside it
+    pad_web.attach(web_interface);
     os.begin();
 }
 

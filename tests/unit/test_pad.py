@@ -42,7 +42,7 @@ def test_glide_header_is_pure():
 def test_glue_wiring():
     """The sensor -> curve link and the strip colour live in PadWeb, through the modules' public APIs."""
     cpp = (SRC / "PadWeb.cpp").read_text()
-    assert "mlx90614.add_listener(this)" in cpp
+    assert "mlx90614.listeners.add(this)" in cpp                    # core 2.1 ListenerSet
     assert "fan.set_temperature(temperature, this)" in cpp
     assert "temperature = online ? object_c : NAN" in cpp            # offline -> NaN -> fail-safe hot
     assert "curve_math::leds_on(" in cpp and "curve_math::led_colour(" in cpp and "fan.get_curve()" in cpp
@@ -59,7 +59,7 @@ def test_post_writes_each_blob_at_most_once():
     post = cpp[cpp.index("void PadWeb::handle_ui_config_post"):cpp.index("// ---- commands")]
     assert post.count("save();") == 1 and post.count("fan.save_curve()") == 1
     assert "set_cold_color(colors[\"start\"].as<const char*>(), false)" in post
-    assert "fan.set_curve(std::move(points), false)" in post
+    assert "fan.set_curve(std::move(points), false, this)" in post
 
 
 @pytest.mark.unit
