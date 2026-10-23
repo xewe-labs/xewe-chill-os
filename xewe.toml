@@ -5,7 +5,7 @@ schema = 1
 
 [project]
 name = "xewe-chill-os"
-version = "0.1.0"
+version = "1.0.0"
 chip = "c3"
 
 [core]
