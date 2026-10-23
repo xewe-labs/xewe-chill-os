@@ -43,7 +43,9 @@ def test_compiles(compiled):
 
 
 def test_status(serial):
-    serial.command(f"${ID} status", expect=rf"{NAME} module (enabled|disabled)", timeout=5)
+    serial.command(
+        f"${ID} status", expect=rf"{NAME} module (enabled|disabled)", timeout=5
+    )
 
 
 def test_add_set_remove(serial):
@@ -51,99 +53,178 @@ def test_add_set_remove(serial):
     serial.command(f"$fan add {pin}", expect=r"Fan: fan added", timeout=5)
     try:
         serial.command(f"$fan set {pin} 128", expect=r"Fan: speed updated", timeout=5)
-        serial.command("$fan status", expect=rf"PWM pin {pin}, speed \d+, no tach", timeout=5)
-        serial.command(f"$fan add {pin}", expect=r"! Fan: failed to add fan", timeout=5)      # duplicate
+        serial.command(
+            "$fan status", expect=rf"PWM pin {pin}, speed \d+, no tach", timeout=5
+        )
+        serial.command(
+            f"$fan add {pin}", expect=r"! Fan: failed to add fan", timeout=5
+        )  # duplicate
     finally:
         serial.command(f"$fan remove {pin}", expect=r"Fan: fan removed", timeout=5)
-    serial.command(f"$fan set {pin} 10", expect=r"! Fan: failed to set fan speed", timeout=5)
+    serial.command(
+        f"$fan set {pin} 10", expect=r"! Fan: failed to set fan speed", timeout=5
+    )
 
 
 def test_shared_pin_refused(serial):
     pwm, tach = _pin("XEWE_TEST_FAN_PIN"), _pin("XEWE_TEST_FAN_PIN2")
-    serial.command(f"$fan add_w_tach {pwm} {tach}", expect=r"Fan: fan with tach added", timeout=5)
+    serial.command(
+        f"$fan add_w_tach {pwm} {tach}", expect=r"Fan: fan with tach added", timeout=5
+    )
     try:
         # PWM on a tach pin, tach on a PWM pin, the same pin twice
-        serial.command(f"$fan add {tach}", expect=r"! Fan: failed to add fan", timeout=5)
-        serial.command(f"$fan add_w_tach {tach} {pwm}", expect=r"! Fan: failed to add fan", timeout=5)
-        serial.command(f"$fan add_w_tach {pwm} {pwm}", expect=r"! Fan: failed to add fan", timeout=5)
+        serial.command(
+            f"$fan add {tach}", expect=r"! Fan: failed to add fan", timeout=5
+        )
+        serial.command(
+            f"$fan add_w_tach {tach} {pwm}",
+            expect=r"! Fan: failed to add fan",
+            timeout=5,
+        )
+        serial.command(
+            f"$fan add_w_tach {pwm} {pwm}",
+            expect=r"! Fan: failed to add fan",
+            timeout=5,
+        )
     finally:
         serial.command(f"$fan remove {pwm}", expect=r"Fan: fan removed", timeout=5)
 
 
 def test_set_rejects_out_of_range(serial):
-    serial.command("$fan set 4 256", expect=r"! Fan: failed to set fan speed", timeout=5)
+    serial.command(
+        "$fan set 4 256", expect=r"! Fan: failed to set fan speed", timeout=5
+    )
 
 
 def test_settings_table(serial):
     # settings table: `$fan set <key>` goes to the table, `$fan schema` lists 2 rows + fans + curve
     serial.command("$fan get curve_ms", expect=r"curve_ms=\d+", timeout=5)
-    serial.command("$fan set stale_ms 999", expect=r"! \$fan set stale_ms: expected u32 in \[1000, 600000\]", timeout=5)
-    serial.command("$fan set curve_ms 99", expect=r"! \$fan set curve_ms: expected u16 in \[100, 60000\]", timeout=5)
+    serial.command(
+        "$fan set stale_ms 999",
+        expect=r"! \$fan set stale_ms: expected u32 in \[1000, 600000\]",
+        timeout=5,
+    )
+    serial.command(
+        "$fan set curve_ms 99",
+        expect=r"! \$fan set curve_ms: expected u16 in \[100, 60000\]",
+        timeout=5,
+    )
     serial.command("$fan set nope 1", expect=r"! \$fan: no setting 'nope'", timeout=5)
     serial.command("$fan schema", expect=r'\{"end":"fan","count":4\}', timeout=5)
 
 
 def test_argc_error(serial):
-    serial.command("$fan set 1", expect=r"Argument count mismatch for '\$fan set'; expected 2, got 1", timeout=5)
+    serial.command(
+        "$fan set 1",
+        expect=r"Argument count mismatch for '\$fan set'; expected 2, got 1",
+        timeout=5,
+    )
 
 
 def test_curve_add_remove(serial):
-    serial.command("$fan curve add 99.5 42", expect=r"Fan: curve point added", timeout=5)
+    serial.command(
+        "$fan curve add 99.5 42", expect=r"Fan: curve point added", timeout=5
+    )
     try:
-        serial.command("$fan curve list", expect=r"99\.50 C -> 42 % \(PWM 107\)", timeout=5)
-        serial.command("$fan curve add 99.5 43", expect=r"Fan: curve point added", timeout=5)   # replaces
-        serial.command("$fan print_json", expect=r'\{"temp":99\.5,"speed":43\}', timeout=5)
-        serial.command("$fan curve add 50 101", expect=r"! Fan: failed to add curve point", timeout=5)
+        serial.command(
+            "$fan curve list", expect=r"99\.50 C -> 42 % \(PWM 107\)", timeout=5
+        )
+        serial.command(
+            "$fan curve add 99.5 43", expect=r"Fan: curve point added", timeout=5
+        )  # replaces
+        serial.command(
+            "$fan print_json", expect=r'\{"temp":99\.5,"speed":43\}', timeout=5
+        )
+        serial.command(
+            "$fan curve add 50 101",
+            expect=r"! Fan: failed to add curve point",
+            timeout=5,
+        )
     finally:
-        serial.command("$fan curve remove 99.5", expect=r"Fan: curve point removed", timeout=5)
-    serial.command("$fan curve remove 99.5", expect=r"! Fan: failed to remove curve point", timeout=5)
+        serial.command(
+            "$fan curve remove 99.5", expect=r"Fan: curve point removed", timeout=5
+        )
+    serial.command(
+        "$fan curve remove 99.5",
+        expect=r"! Fan: failed to remove curve point",
+        timeout=5,
+    )
 
 
 def test_curve_set_rejects_bad_specs(serial):
     # nothing is changed by a rejected `set`
-    serial.command("$fan curve set 22:101", expect=r"! Fan: failed to set curve: expected T:P", timeout=5)
     serial.command(
-        "$fan curve set 22:0,22:50", expect=r"! Fan: failed to set curve: two points at the same temperature", timeout=5
+        "$fan curve set 22:101",
+        expect=r"! Fan: failed to set curve: expected T:P",
+        timeout=5,
     )
-    serial.command("$fan curve set 300:50", expect=r"! Fan: failed to set curve: temperature outside", timeout=5)
-    serial.command("$fan curve frob", expect=r"! Fan: usage: \$fan curve list", timeout=5)
+    serial.command(
+        "$fan curve set 22:0,22:50",
+        expect=r"! Fan: failed to set curve: two points at the same temperature",
+        timeout=5,
+    )
+    serial.command(
+        "$fan curve set 300:50",
+        expect=r"! Fan: failed to set curve: temperature outside",
+        timeout=5,
+    )
+    serial.command(
+        "$fan curve frob", expect=r"! Fan: usage: \$fan curve list", timeout=5
+    )
 
 
 def test_temperature_drives_curve(serial):
     # a point above every realistic one: `$fan temp` beyond it gives that point's speed
     serial.command("$fan curve add 199 37", expect=r"Fan: curve point added", timeout=5)
     try:
-        serial.command("$fan temp 199.5", expect=r"Fan: temperature set to 199\.50 C, curve target 37 %", timeout=5)
+        serial.command(
+            "$fan temp 199.5",
+            expect=r"Fan: temperature set to 199\.50 C, curve target 37 %",
+            timeout=5,
+        )
     finally:
-        serial.command("$fan curve remove 199", expect=r"Fan: curve point removed", timeout=5)
+        serial.command(
+            "$fan curve remove 199", expect=r"Fan: curve point removed", timeout=5
+        )
     serial.command("$fan temp hot", expect=r"! Fan: invalid temperature", timeout=5)
 
 
 def test_settings_survive_restart(serial):
-    serial.command("$fan curve add 88.25 33", expect=r"Fan: curve point added", timeout=5)
+    serial.command(
+        "$fan curve add 88.25 33", expect=r"Fan: curve point added", timeout=5
+    )
     try:
         _restart(serial)
         serial.command("$fan curve list", expect=r"88\.25 C -> 33 %", timeout=5)
     finally:
-        serial.command("$fan curve remove 88.25", expect=r"Fan: curve point removed", timeout=5)
+        serial.command(
+            "$fan curve remove 88.25", expect=r"Fan: curve point removed", timeout=5
+        )
 
 
 def test_failsafe_when_no_temperature(serial):
     # no temperature after boot for stale_ms: fans at the last point; the first reading ends it
     _restart(serial)
-    stale = int(serial.command("$fan get stale_ms", expect=r"stale_ms=(\d+)", timeout=5)[1])
+    stale = int(
+        serial.command("$fan get stale_ms", expect=r"stale_ms=(\d+)", timeout=5)[1]
+    )
     if stale > 30000:
         pytest.skip(f"stale_ms {stale} too long for this test")
     time.sleep(stale / 1000 + 2)
     serial.send("$fan status")
     m = serial.expect(
-        r"Temperature: (never received \(fail-safe (\d+) %\)|none yet|[-\d.]+ C \(source\)|offline)", timeout=5
+        r"Temperature: (never received \(fail-safe (\d+) %\)|none yet|[-\d.]+ C \(source\)|offline)",
+        timeout=5,
     )
     if not m[1].startswith("never"):
-        pytest.skip(f"no fail-safe here: {m[1]} (empty curve, or the sensor feeds the curve)")
+        pytest.skip(
+            f"no fail-safe here: {m[1]} (empty curve, or the sensor feeds the curve)"
+        )
     if int(m[2]) == 100:
         serial.command("$fan status", expect=r"speed 255", timeout=5)
-    serial.command("$fan temp 20", expect=r"Fan: temperature set to 20\.00 C", timeout=5)
+    serial.command(
+        "$fan temp 20", expect=r"Fan: temperature set to 20\.00 C", timeout=5
+    )
     serial.command("$fan status", expect=r"Temperature: 20\.00 C \(CLI\)", timeout=5)
 
 
@@ -151,15 +232,24 @@ def test_failsafe_spins_fans(serial):
     pwm = os.environ.get("XEWE_TEST_FAN_PWM_PIN")
     tach = os.environ.get("XEWE_TEST_FAN_TACH_PIN")
     if not (pwm and tach):
-        pytest.skip("requires hardware: a 4-wire fan on XEWE_TEST_FAN_PWM_PIN / XEWE_TEST_FAN_TACH_PIN")
+        pytest.skip(
+            "requires hardware: a 4-wire fan on XEWE_TEST_FAN_PWM_PIN / XEWE_TEST_FAN_TACH_PIN"
+        )
     _restart(serial)
-    stale = int(serial.command("$fan get stale_ms", expect=r"stale_ms=(\d+)", timeout=5)[1])
-    time.sleep(stale / 1000 + 4)   # fail-safe, then a few 1 s RPM windows
+    stale = int(
+        serial.command("$fan get stale_ms", expect=r"stale_ms=(\d+)", timeout=5)[1]
+    )
+    time.sleep(stale / 1000 + 4)  # fail-safe, then a few 1 s RPM windows
     # no reading since boot (fail-safe), or the sensor offline (NaN): both run at the last point
     serial.send("$fan status")
-    serial.expect(r"Temperature: (never received \(fail-safe [1-9]\d* %\)|offline \(source\))", timeout=5)
+    serial.expect(
+        r"Temperature: (never received \(fail-safe [1-9]\d* %\)|offline \(source\))",
+        timeout=5,
+    )
     serial.send("$fan status")
-    m = serial.expect(rf"PWM pin {pwm}, speed \d+, tach pin {tach}, (\d+) RPM", timeout=5)
+    m = serial.expect(
+        rf"PWM pin {pwm}, speed \d+, tach pin {tach}, (\d+) RPM", timeout=5
+    )
     assert int(m[1]) > 0, "fan not spinning in fail-safe"
 
 
@@ -167,13 +257,17 @@ def test_rpm_reading(serial):
     pwm = os.environ.get("XEWE_TEST_FAN_PWM_PIN")
     tach = os.environ.get("XEWE_TEST_FAN_TACH_PIN")
     if not (pwm and tach):
-        pytest.skip("requires hardware: a 4-wire fan on XEWE_TEST_FAN_PWM_PIN / XEWE_TEST_FAN_TACH_PIN")
+        pytest.skip(
+            "requires hardware: a 4-wire fan on XEWE_TEST_FAN_PWM_PIN / XEWE_TEST_FAN_TACH_PIN"
+        )
     serial.command(f"$fan set {pwm} 255", expect=r"Fan: speed updated", timeout=5)
     m = None
     for _ in range(10):  # the RPM filter needs a few 1 s windows
         serial.send("$fan status")
-        m = serial.expect(rf"PWM pin {pwm}, speed \d+, tach pin {tach}, (\d+) RPM", timeout=5)
+        m = serial.expect(
+            rf"PWM pin {pwm}, speed \d+, tach pin {tach}, (\d+) RPM", timeout=5
+        )
         if int(m[1]) > 0:
             break
-        serial.collect(silence=1.5, limit=2)   # next 1 s RPM window
+        serial.collect(silence=1.5, limit=2)  # next 1 s RPM window
     assert m and int(m[1]) > 0, "fan reports 0 RPM"

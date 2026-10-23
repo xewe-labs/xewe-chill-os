@@ -30,7 +30,7 @@ def _cpp():
 
 def _update_lights():
     cpp = _cpp()
-    return cpp[cpp.index("void PadWeb::update_lights"):cpp.index("// ---- settings")]
+    return cpp[cpp.index("void PadWeb::update_lights") : cpp.index("// ---- settings")]
 
 
 @pytest.mark.unit
@@ -65,8 +65,14 @@ def test_glue_wiring():
     cpp = _cpp()
     assert "mlx90614.listeners.add(this)" in cpp
     assert "fan.set_temperature(temperature, this)" in cpp
-    assert "temperature = online ? object_c : NAN" in cpp            # offline -> NaN -> fail-safe hot
-    assert "curve_math::leds_on(" in cpp and "curve_math::led_colour(" in cpp and "fan.get_curve()" in cpp
+    assert (
+        "temperature = online ? object_c : NAN" in cpp
+    )  # offline -> NaN -> fail-safe hot
+    assert (
+        "curve_math::leds_on(" in cpp
+        and "curve_math::led_colour(" in cpp
+        and "fan.get_curve()" in cpp
+    )
     assert "XEWE_PAD_UPDATE_MS" in cpp
 
 
@@ -89,21 +95,33 @@ def test_strip_changes_rate_limited():
     """Every led sync call is stored by the led module: at most one change per XEWE_PAD_COLOR_MIN_MS,
     and no direct NVS write from the frame loop."""
     cpp = _cpp()
-    may = cpp[cpp.index("bool PadWeb::may_change"):cpp.index("void PadWeb::update_lights")]
+    may = cpp[
+        cpp.index("bool PadWeb::may_change") : cpp.index("void PadWeb::update_lights")
+    ]
     assert "XEWE_PAD_COLOR_MIN_MS" in may
     frame = _update_lights()
-    assert "!may_change(now)" in frame.split("{", 1)[1].split(";", 1)[0]   # the first statement
+    assert (
+        "!may_change(now)" in frame.split("{", 1)[1].split(";", 1)[0]
+    )  # the first statement
     assert "last_change_ms = now" in frame
-    for persisted in ("led.set_state", "led.set_color", "led.set_brightness", "save(", "write_flex"):
+    for persisted in (
+        "led.set_state",
+        "led.set_color",
+        "led.set_brightness",
+        "save(",
+        "write_flex",
+    ):
         assert persisted not in frame, persisted
 
 
 @pytest.mark.unit
 def test_post_writes_each_blob_at_most_once():
     cpp = _cpp()
-    post = cpp[cpp.index("void PadWeb::handle_ui_config_post"):cpp.index("// ---- commands")]
+    post = cpp[
+        cpp.index("void PadWeb::handle_ui_config_post") : cpp.index("// ---- commands")
+    ]
     assert post.count("save();") == 1 and post.count("fan.save_curve()") == 1
-    assert "set_cold_color(colors[\"start\"].as<const char*>(), false)" in post
+    assert 'set_cold_color(colors["start"].as<const char*>(), false)' in post
     assert "fan.set_curve(std::move(points), false, this)" in post
 
 
@@ -124,10 +142,17 @@ def test_sketch_declares_project_modules():
 def test_project_files_are_gpl():
     files = [ROOT / "xewe-chill-os.ino", ROOT / "Config.h", *UNIT.glob("*.cpp")]
     for folder in ("Fan", "Mlx90614", "PadWeb"):
-        files += [*(ROOT / "src" / folder).glob("*.h"), *(ROOT / "src" / folder).glob("*.cpp")]
+        files += [
+            *(ROOT / "src" / folder).glob("*.h"),
+            *(ROOT / "src" / folder).glob("*.cpp"),
+        ]
     for f in files:
         head = f.read_text().splitlines()[:3]
         assert "// SPDX-License-Identifier: GPL-3.0-only" in head, f
-        assert head[2].startswith(f"// xewe-chill-os/{f.relative_to(ROOT).as_posix()}"), f
+        assert head[2].startswith(
+            f"// xewe-chill-os/{f.relative_to(ROOT).as_posix()}"
+        ), f
     assert "GNU GENERAL PUBLIC LICENSE" in (ROOT / "LICENSE.txt").read_text()[:200]
-    assert not (ROOT / "LICENSE.md").exists() and not (ROOT / "LICENSE-NO-AI.md").exists()
+    assert (
+        not (ROOT / "LICENSE.md").exists() and not (ROOT / "LICENSE-NO-AI.md").exists()
+    )

@@ -18,7 +18,8 @@ A --define or a line in the project's Config.h wins.
 #define XEWE_PAD_UPDATE_MS 250
 #endif
 
-/* Shortest time between two strip changes (each colour change is an NVS write in the led module), ms */
+/* Shortest time between two strip changes (each colour change is an NVS write in the led module),
+ * ms */
 #ifndef XEWE_PAD_COLOR_MIN_MS
 #define XEWE_PAD_COLOR_MIN_MS 2000
 #endif

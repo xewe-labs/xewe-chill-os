@@ -15,7 +15,7 @@ SECTIONS = (
     "/* ---- start compile time defined constants ---- */",
     "/* ---- end compile time defined constants ---- */",
 )
-SENTINEL = re.compile(r"^\s*#\s*define\s+\w+\s+INJECTED_FROM_DOTENV", re.M)
+SENTINEL = re.compile(r"^\s*#\s*define\s+\w+\s+INJECTED_FROM_DOTENV", re.MULTILINE)
 # a product override: a define, or the per-chip guard around one, as the generated blocks write it
 OVERRIDE = re.compile(
     r"^#(define XEWE_[A-Z0-9_]+ \S.*|(el)?if defined\(XEWE_CHIP_[A-Z0-9]+\)|else|endif)$"

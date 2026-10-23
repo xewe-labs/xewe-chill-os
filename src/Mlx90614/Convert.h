@@ -12,29 +12,36 @@
 
 namespace mlx90614_fx {
 
-constexpr float   KELVIN_STEP   = 0.02f;      // one LSB of a RAM temperature register, K
-constexpr float   KELVIN_ZERO   = 273.15f;
-constexpr uint8_t DEFAULT_ADDR  = 0x5A;
+constexpr float KELVIN_STEP = 0.02f; // one LSB of a RAM temperature register, K
+constexpr float KELVIN_ZERO = 273.15f;
+constexpr uint8_t DEFAULT_ADDR = 0x5A;
 
 // A RAM temperature word (LSB, MSB as read) -> °C. Bit 15 is the sensor's error flag: a glitched
-// bus returns 0xFFFF, which would read as 1037.5 °C; reported as an error (false), never as a value.
+// bus returns 0xFFFF, which would read as 1037.5 °C; reported as an error (false), never as a
+// value.
 inline bool raw_to_celsius(uint8_t lsb, uint8_t msb, float& out) {
-    if (msb & 0x80) return false;
+    if (msb & 0x80)
+        return false;
     const uint16_t raw = static_cast<uint16_t>((static_cast<uint16_t>(msb) << 8) | lsb);
     out = static_cast<float>(raw) * KELVIN_STEP - KELVIN_ZERO;
     return true;
 }
 
 // 7-bit I2C address the module accepts: 0x01-0x7F (0x00 is the general call).
-inline bool valid_address(unsigned value) { return value >= 0x01 && value <= 0x7F; }
+inline bool valid_address(unsigned value) {
+    return value >= 0x01 && value <= 0x7F;
+}
 
 // "0x5A", "5a", "5A" -> 0x5A; the whole token must be hex and the value a valid address.
 inline bool parse_address(const std::string& text, uint8_t& out) {
-    if (text.empty() || text.size() > 4) return false;
+    if (text.empty() || text.size() > 4)
+        return false;
     char* end = nullptr;
     const unsigned long v = std::strtoul(text.c_str(), &end, 16);
-    if (end == text.c_str() || *end != '\0' || text[0] == '-' || text[0] == '+' || text[0] == ' ') return false;
-    if (!valid_address(static_cast<unsigned>(v))) return false;
+    if (end == text.c_str() || *end != '\0' || text[0] == '-' || text[0] == '+' || text[0] == ' ')
+        return false;
+    if (!valid_address(static_cast<unsigned>(v)))
+        return false;
     out = static_cast<uint8_t>(v);
     return true;
 }

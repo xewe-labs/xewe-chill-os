@@ -11,63 +11,41 @@
 #include <cmath>
 #include <cstdlib>
 
-
 Mlx90614::Mlx90614(xewe::Os& host)
-      : xewe::Module(host,
-               /* id                  */ "mlx90614",
-               /* name                */ "MLX90614",
-               /* description         */ "Contactless I2C temperature sensor (object and ambient)",
-               /* requires_init_setup */ false,
-               /* can_be_disabled     */ true,
-               /* has_cli_cmds        */ true)
-{
-    register_command({
-        "read",
-        "Read the sensor now",
-        "$mlx90614 read",
-        0,
-        [this](xewe::span<const std::string> args){ read_cmd(args); }
-    });
+    : xewe::Module(host,
+          /* id                  */ "mlx90614",
+          /* name                */ "MLX90614",
+          /* description         */ "Contactless I2C temperature sensor (object and ambient)",
+          /* requires_init_setup */ false,
+          /* can_be_disabled     */ true,
+          /* has_cli_cmds        */ true) {
+    register_command({"read", "Read the sensor now", "$mlx90614 read", 0,
+        [this](xewe::span<const std::string> args) { read_cmd(args); }});
 
-    register_command({
-        "scan",
-        "Scan the I2C bus for devices (stops after 1.5 s or on a dead bus)",
-        "$mlx90614 scan",
-        0,
-        [this](xewe::span<const std::string> args){ scan_cmd(args); }
-    });
+    register_command({"scan", "Scan the I2C bus for devices (stops after 1.5 s or on a dead bus)",
+        "$mlx90614 scan", 0, [this](xewe::span<const std::string> args) { scan_cmd(args); }});
 
-    register_command({
-        "set_addr",
-        "Set the sensor's I2C address (hex, 0x01-0x7F)",
-        "$mlx90614 set_addr 0x5A",
-        1,
-        [this](xewe::span<const std::string> args){ set_addr_cmd(args); }
-    });
+    register_command(
+        {"set_addr", "Set the sensor's I2C address (hex, 0x01-0x7F)", "$mlx90614 set_addr 0x5A", 1,
+            [this](xewe::span<const std::string> args) { set_addr_cmd(args); }});
 
-    register_command({
-        "set_pins",
-        "Set the I2C pins and restart the bus: <sda> <scl>",
-        "$mlx90614 set_pins 4 5",
-        2,
-        [this](xewe::span<const std::string> args){ set_pins_cmd(args); }
-    });
+    register_command(
+        {"set_pins", "Set the I2C pins and restart the bus: <sda> <scl>", "$mlx90614 set_pins 4 5",
+            2, [this](xewe::span<const std::string> args) { set_pins_cmd(args); }});
 
-    register_command({
-        "print_json",
-        "Print the sensor data as JSON",
-        "$mlx90614 print_json",
-        0,
-        [this](xewe::span<const std::string>){ os.serial.print(get_json()); }
-    });
+    register_command({"print_json", "Print the sensor data as JSON", "$mlx90614 print_json", 0,
+        [this](xewe::span<const std::string>) { os.serial.print(get_json()); }});
 }
 
 xewe::Settings Mlx90614::settings() const {
     // 255 = pin not configured
     static constexpr xewe::SettingDef table[] = {
-        xewe::setting<&Mlx90614::i2c_address>("addr", 0x01, 0x7F, XEWE_MLX90614_ADDR, "I2C address (decimal; set_addr takes hex)"),
-        xewe::setting<&Mlx90614::sda_pin>    ("sda", 0, 255, XEWE_MLX90614_SDA, "I2C SDA GPIO, 255 = none"),
-        xewe::setting<&Mlx90614::scl_pin>    ("scl", 0, 255, XEWE_MLX90614_SCL, "I2C SCL GPIO, 255 = none"),
+        xewe::setting<&Mlx90614::i2c_address>(
+            "addr", 0x01, 0x7F, XEWE_MLX90614_ADDR, "I2C address (decimal; set_addr takes hex)"),
+        xewe::setting<&Mlx90614::sda_pin>(
+            "sda", 0, 255, XEWE_MLX90614_SDA, "I2C SDA GPIO, 255 = none"),
+        xewe::setting<&Mlx90614::scl_pin>(
+            "scl", 0, 255, XEWE_MLX90614_SCL, "I2C SCL GPIO, 255 = none"),
     };
     return {table, this};
 }
@@ -82,26 +60,31 @@ void Mlx90614::begin_routines_required() {
     poll();
     char buf[96];
     if (sensor_online) {
-        snprintf(buf, sizeof(buf), "MLX90614: online at 0x%02X, %.2f C", i2c_address, cached_object_temp);
+        snprintf(buf, sizeof(buf), "MLX90614: online at 0x%02X, %.2f C", i2c_address,
+            cached_object_temp);
     } else {
-        snprintf(buf, sizeof(buf), "MLX90614: no sensor at 0x%02X (SDA %u, SCL %u)", i2c_address, sda_pin, scl_pin);
+        snprintf(buf, sizeof(buf), "MLX90614: no sensor at 0x%02X (SDA %u, SCL %u)", i2c_address,
+            sda_pin, scl_pin);
     }
     os.serial.print(buf);
 }
 
 void Mlx90614::loop() {
-    if (!bus_started) return;
+    if (!bus_started)
+        return;
     const uint32_t interval = sensor_online ? XEWE_MLX90614_POLL_MS : XEWE_MLX90614_OFFLINE_POLL_MS;
-    if (millis() - last_read_time < interval) return;
+    if (millis() - last_read_time < interval)
+        return;
     poll();
 }
 
 void Mlx90614::reset(const bool verbose, const bool do_restart, const bool keep_enabled) {
-    cached_object_temp  = NAN;
+    cached_object_temp = NAN;
     cached_ambient_temp = NAN;
-    sensor_online       = false;
-    if (bus_started) Wire.end();
-    bus_started         = false;
+    sensor_online = false;
+    if (bus_started)
+        Wire.end();
+    bus_started = false;
     release_pins();
     // wipes the "mlx90614" namespace and reloads the table defaults
     Module::reset(verbose, do_restart, keep_enabled);
@@ -111,20 +94,23 @@ std::string Mlx90614::status(const bool verbose) const {
     std::string s = Module::status(false);
     char buf[200];
     if (pins_configured()) {
-        snprintf(buf, sizeof(buf), "\nPins: SDA %u, SCL %u\nAddress: 0x%02X\nOnline: %s",
-                 sda_pin, scl_pin, i2c_address, sensor_online ? "yes" : "no");
+        snprintf(buf, sizeof(buf), "\nPins: SDA %u, SCL %u\nAddress: 0x%02X\nOnline: %s", sda_pin,
+            scl_pin, i2c_address, sensor_online ? "yes" : "no");
     } else {
-        snprintf(buf, sizeof(buf), "\nPins: not configured\nAddress: 0x%02X\nOnline: no", i2c_address);
+        snprintf(
+            buf, sizeof(buf), "\nPins: not configured\nAddress: 0x%02X\nOnline: no", i2c_address);
     }
     s += buf;
     if (sensor_online) {
-        snprintf(buf, sizeof(buf), "\nObject: %.2f C\nAmbient: %.2f C", cached_object_temp, cached_ambient_temp);
+        snprintf(buf, sizeof(buf), "\nObject: %.2f C\nAmbient: %.2f C", cached_object_temp,
+            cached_ambient_temp);
     } else {
         snprintf(buf, sizeof(buf), "\nObject: n/a (offline)");
     }
     s += buf;
     s += "\nRead errors: " + std::to_string(read_errors);
-    if (verbose) os.serial.print(s);
+    if (verbose)
+        os.serial.print(s);
     return s;
 }
 
@@ -144,20 +130,27 @@ void Mlx90614::notify() {
     listeners.notify([&](Mlx90614Listener& l) { l.on_temperature(obj, amb, sensor_online); });
 }
 
-bool Mlx90614::is_online() const { return sensor_online; }
+bool Mlx90614::is_online() const {
+    return sensor_online;
+}
 
 bool Mlx90614::set_i2c_address(uint8_t new_address) {
-    if (is_disabled() || !mlx90614_fx::valid_address(new_address)) return false;
-    return apply_setting("addr", std::to_string(new_address));     // saves, then on_setting_changed polls
+    if (is_disabled() || !mlx90614_fx::valid_address(new_address))
+        return false;
+    return apply_setting(
+        "addr", std::to_string(new_address)); // saves, then on_setting_changed polls
 }
 
 bool Mlx90614::set_pins(uint8_t sda, uint8_t scl) {
-    if (is_disabled() || sda == scl || !GPIO_IS_VALID_OUTPUT_GPIO(sda) || !GPIO_IS_VALID_OUTPUT_GPIO(scl)) return false;
+    if (is_disabled() || sda == scl || !GPIO_IS_VALID_OUTPUT_GPIO(sda) ||
+        !GPIO_IS_VALID_OUTPUT_GPIO(scl))
+        return false;
     // a pin another module holds is refused before anything changes (start_bus claims them)
     const char* sda_owner = xewe::pins::owner_of(sda);
     const char* scl_owner = xewe::pins::owner_of(scl);
-    if ((sda_owner && id != sda_owner) || (scl_owner && id != scl_owner)) return false;
-    batch = true;                                   // both rows, then one bus restart
+    if ((sda_owner && id != sda_owner) || (scl_owner && id != scl_owner))
+        return false;
+    batch = true; // both rows, then one bus restart
     apply_setting("sda", std::to_string(sda));
     apply_setting("scl", std::to_string(scl));
     batch = false;
@@ -167,32 +160,38 @@ bool Mlx90614::set_pins(uint8_t sda, uint8_t scl) {
 }
 
 void Mlx90614::on_setting_changed(const xewe::SettingDef& def) {
-    if (batch || is_disabled()) return;
+    if (batch || is_disabled())
+        return;
     const std::string_view key = def.key;
     if (key == "addr") {
-        if (bus_started) poll();
+        if (bus_started)
+            poll();
     } else if (key == "sda" || key == "scl") {
-        start_bus();                                // releases the old pins, claims the new ones
-        if (bus_started) poll();
-        else os.serial.print("! MLX90614: bus not started (pins not configured, equal, or claimed elsewhere)");
+        start_bus(); // releases the old pins, claims the new ones
+        if (bus_started)
+            poll();
+        else
+            os.serial.print(
+                "! MLX90614: bus not started (pins not configured, equal, or claimed elsewhere)");
     }
 }
 
 std::string Mlx90614::get_json() const {
-    if (is_disabled()) return "{}";
+    if (is_disabled())
+        return "{}";
     JsonDocument doc;
     doc["module"] = "MLX90614";
     doc["online"] = sensor_online;
     if (sensor_online) {
-        doc["object_temp"]  = cached_object_temp;
+        doc["object_temp"] = cached_object_temp;
         doc["ambient_temp"] = cached_ambient_temp;
     } else {
-        doc["object_temp"]  = nullptr;
+        doc["object_temp"] = nullptr;
         doc["ambient_temp"] = nullptr;
     }
     doc["i2c_address"] = i2c_address;
-    doc["sda_pin"]     = sda_pin;
-    doc["scl_pin"]     = scl_pin;
+    doc["sda_pin"] = sda_pin;
+    doc["scl_pin"] = scl_pin;
     doc["read_errors"] = read_errors;
 
     std::string out;
@@ -213,12 +212,15 @@ void Mlx90614::release_pins() {
 }
 
 void Mlx90614::start_bus() {
-    if (bus_started) Wire.end();
+    if (bus_started)
+        Wire.end();
     bus_started = false;
     release_pins();
-    if (!pins_configured() || sda_pin == scl_pin) return;
+    if (!pins_configured() || sda_pin == scl_pin)
+        return;
     // core pin registry: refused (and reported) when another module holds a pin
-    if (!xewe::pins::claim(sda_pin, id.c_str())) return;
+    if (!xewe::pins::claim(sda_pin, id.c_str()))
+        return;
     if (!xewe::pins::claim(scl_pin, id.c_str())) {
         xewe::pins::release(sda_pin, id.c_str());
         return;
@@ -234,29 +236,33 @@ void Mlx90614::poll() {
     const float amb = std::isnan(obj) ? NAN : read_i2c_temp(MLX_RAM_TA);
     sensor_online = !std::isnan(obj) && !std::isnan(amb);
     if (sensor_online) {
-        cached_object_temp  = obj;
+        cached_object_temp = obj;
         cached_ambient_temp = amb;
     }
     notify();
 }
 
 float Mlx90614::read_i2c_temp(uint8_t register_address) {
-    if (!bus_started) return NAN;
+    if (!bus_started)
+        return NAN;
 
     Wire.beginTransmission(i2c_address);
     Wire.write(register_address);
-    if (Wire.endTransmission(false) != 0) return NAN;
+    if (Wire.endTransmission(false) != 0)
+        return NAN;
 
     // all 3 bytes (LSB, MSB, PEC) or nothing: a short read leaves stale bytes for the next call
     if (Wire.requestFrom(i2c_address, static_cast<uint8_t>(3)) != 3 || Wire.available() < 3) {
-        while (Wire.available()) Wire.read();
+        while (Wire.available())
+            Wire.read();
         read_errors++;
         return NAN;
     }
     const uint8_t lsb = static_cast<uint8_t>(Wire.read());
     const uint8_t msb = static_cast<uint8_t>(Wire.read());
-    Wire.read();    // PEC, not checked
-    // bit 15 is the sensor's error flag (0xFFFF on a glitched bus reads as 1037 C): an error, not hot
+    Wire.read(); // PEC, not checked
+    // bit 15 is the sensor's error flag (0xFFFF on a glitched bus reads as 1037 C): an error, not
+    // hot
     float celsius;
     if (!mlx90614_fx::raw_to_celsius(lsb, msb, celsius)) {
         read_errors++;
@@ -277,27 +283,35 @@ int Mlx90614::scan() {
     const char* stopped = nullptr;
     std::string results;
     for (; address < 0x78; address++) {
-        if (millis() - start > XEWE_MLX90614_SCAN_BUDGET_MS) { stopped = "time budget spent"; break; }
+        if (millis() - start > XEWE_MLX90614_SCAN_BUDGET_MS) {
+            stopped = "time budget spent";
+            break;
+        }
         Wire.beginTransmission(address);
         const uint8_t result = Wire.endTransmission();
         if (result == 0) {
             char buf[64];
             snprintf(buf, sizeof(buf), "  Found device at 0x%02X%s\n", address,
-                     (address == mlx90614_fx::DEFAULT_ADDR) ? " (default MLX90614)" : "");
+                (address == mlx90614_fx::DEFAULT_ADDR) ? " (default MLX90614)" : "");
             results += buf;
             found++;
         }
         streak = mlx90614_fx::scan_error_streak(streak, result);
-        if (streak >= mlx90614_fx::MAX_BUS_ERRORS_IN_A_ROW) { stopped = "bus not responding"; break; }
+        if (streak >= mlx90614_fx::MAX_BUS_ERRORS_IN_A_ROW) {
+            stopped = "bus not responding";
+            break;
+        }
     }
     Wire.setTimeOut(saved_timeout);
 
     char tail[128];
     if (stopped) {
-        snprintf(tail, sizeof(tail), "Scan stopped at 0x%02X after %lu ms (%s). Check wiring and pull-up resistors.",
-                 address, static_cast<unsigned long>(millis() - start), stopped);
+        snprintf(tail, sizeof(tail),
+            "Scan stopped at 0x%02X after %lu ms (%s). Check wiring and pull-up resistors.",
+            address, static_cast<unsigned long>(millis() - start), stopped);
         results += tail;
-        if (found == 0) results = "No I2C devices found. " + results;
+        if (found == 0)
+            results = "No I2C devices found. " + results;
     } else if (found == 0) {
         results = "No I2C devices found. Check wiring and pull-up resistors.";
     } else {
@@ -310,27 +324,36 @@ int Mlx90614::scan() {
 // ---- commands -----------------------------------------------------------------------------------
 
 void Mlx90614::read_cmd(xewe::span<const std::string>) {
-    if (is_disabled(true)) return;
+    if (is_disabled(true))
+        return;
     if (!bus_started) {
-        os.serial.print("! MLX90614: cannot read, pins not configured; run $mlx90614 set_pins <sda> <scl>");
+        os.serial.print(
+            "! MLX90614: cannot read, pins not configured; run $mlx90614 set_pins <sda> <scl>");
         return;
     }
     const uint32_t errors_before = read_errors;
     poll();
     if (!sensor_online) {
-        if (read_errors != errors_before) os.serial.print("! MLX90614: failed to read the sensor: error reply (bad bus or address?), reported as offline");
-        else os.serial.print("! MLX90614: failed to read the sensor; check the I2C wiring or address");
+        if (read_errors != errors_before)
+            os.serial.print("! MLX90614: failed to read the sensor: error reply (bad bus or "
+                            "address?), reported as offline");
+        else
+            os.serial.print(
+                "! MLX90614: failed to read the sensor; check the I2C wiring or address");
         return;
     }
     char buf[80];
-    snprintf(buf, sizeof(buf), "MLX90614: object %.2f C, ambient %.2f C", cached_object_temp, cached_ambient_temp);
+    snprintf(buf, sizeof(buf), "MLX90614: object %.2f C, ambient %.2f C", cached_object_temp,
+        cached_ambient_temp);
     os.serial.print(buf);
 }
 
 void Mlx90614::scan_cmd(xewe::span<const std::string>) {
-    if (is_disabled(true)) return;
+    if (is_disabled(true))
+        return;
     if (!bus_started) {
-        os.serial.print("! MLX90614: cannot scan, pins not configured; run $mlx90614 set_pins <sda> <scl>");
+        os.serial.print(
+            "! MLX90614: cannot scan, pins not configured; run $mlx90614 set_pins <sda> <scl>");
         return;
     }
     os.serial.print("MLX90614: scanning the I2C bus...");
@@ -338,12 +361,14 @@ void Mlx90614::scan_cmd(xewe::span<const std::string>) {
 }
 
 void Mlx90614::set_addr_cmd(xewe::span<const std::string> args) {
-    if (is_disabled(true)) return;
+    if (is_disabled(true))
+        return;
     // hex with or without 0x; the whole token must parse
     uint8_t v = 0;
     if (mlx90614_fx::parse_address(args[0], v) && set_i2c_address(v)) {
         char buf[64];
-        snprintf(buf, sizeof(buf), "MLX90614: address set to 0x%02X and saved", static_cast<unsigned>(v));
+        snprintf(buf, sizeof(buf), "MLX90614: address set to 0x%02X and saved",
+            static_cast<unsigned>(v));
         os.serial.print(buf);
     } else {
         os.serial.print("! MLX90614: invalid I2C address, use hex 0x01-0x7F (e.g. 0x5A)");
@@ -351,12 +376,15 @@ void Mlx90614::set_addr_cmd(xewe::span<const std::string> args) {
 }
 
 void Mlx90614::set_pins_cmd(xewe::span<const std::string> args) {
-    if (is_disabled(true)) return;
+    if (is_disabled(true))
+        return;
     uint8_t sda, scl;
-    if (!xewe::str::parse_int(args[0], sda) || !xewe::str::parse_int(args[1], scl) || !set_pins(sda, scl)) {
-        os.serial.print("! MLX90614: invalid pins, expected $mlx90614 set_pins <sda> <scl> (two different output-capable GPIOs)");
+    if (!xewe::str::parse_int(args[0], sda) || !xewe::str::parse_int(args[1], scl) ||
+        !set_pins(sda, scl)) {
+        os.serial.print("! MLX90614: invalid pins, expected $mlx90614 set_pins <sda> <scl> (two "
+                        "different output-capable GPIOs)");
         return;
     }
     os.serial.printf("MLX90614: pins set to SDA=%u SCL=%u, %s", sda_pin, scl_pin,
-                     sensor_online ? "sensor online" : "no valid data from the sensor");
+        sensor_online ? "sensor online" : "no valid data from the sensor");
 }

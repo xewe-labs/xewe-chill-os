@@ -2,8 +2,9 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // xewe-chill-os/xewe-chill-os.ino
 //
-// The cooling pad firmware: XeWeCore's Os, the repo modules (wifi, web-interface, led), then the pad's
-// own modules: Fan (fans and the curve), Mlx90614 (the sensor) and PadWeb (the glue and the page).
+// The cooling pad firmware: XeWeCore's Os, the repo modules (wifi, web-interface, led), then the
+// pad's own modules: Fan (fans and the curve), Mlx90614 (the sensor) and PadWeb (the glue and the
+// page).
 
 // The project's values, first so a plain Arduino IDE build reads them too.
 #include "Config.h"
