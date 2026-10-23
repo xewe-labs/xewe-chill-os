@@ -63,10 +63,11 @@ Set your curve again afterwards.
 |---|---|
 | Below the first point | The strip is off more than 0.5 °C below the first curve point. Test with `$fan temp 40`. |
 | Lights off | `$pad status` → `Lights: off` → `$pad lights on`. |
-| Strip off | `$led status` shows state false or brightness 0 → `$led on`, `$led brightness 128`. |
-| Data pin | `$led status` shows the pin in use. Fix: `$led set pin_data <gpio>`, then `$system restart`. |
-| Length | `$led set num_led <count>`. |
-| Colours swapped | Red shows as green: `$led set colorder GRB` (try `RGB` for other strips). |
+| Brightness | `$led status` shows brightness 0 → `$led set_brightness 128`. |
+| Data pin | The pin is set at build time: `XEWE_LED_PIN_DATA` in `Config.h` (GPIO 6 on C3/C6). Build and flash again after a change. |
+| Length | `$led set_length <count>`. |
+| Colours swapped | Red shows as green: `$led set_color_order GRB` (try `RGB` for other strips). |
+| Slow to follow | With lights on the pad changes the strip at most every 2 s, and only for a visible step. |
 | Always red | No sensor reading. See "The sensor reads offline". |
 
 ## The page does not open
@@ -90,7 +91,7 @@ Answer `y` within 15 s. The device restarts and asks the first-boot questions ag
 From a computer, erase the flash while flashing:
 
 ```sh
-./run.sh --chip c3 --define LED_PIN_DATA=6 --define LED_COUNT=12
+./run.sh --chip c3
 ```
 
 `./run.sh` erases the flash unless you pass `--keep-nvs`.

@@ -69,8 +69,10 @@ On the web page: change the table, then press **Save Curve**. Nothing is stored 
 The blend runs from the first to the last point, not to the point where the fans reach 100 %.
 With the default curve (22, 27, 32 °C) the strip is half way at 27 °C: `#7F7F7F` from cyan and red.
 
-The strip turns on at the first point and turns off only 0.5 °C below it. The colour glides to
-each new value in about half a second.
+The strip turns on at the first point and turns off only 0.5 °C below it. The pad sends a new
+colour to the led module at most every 2 s, and only when a channel moved by 8 or more or the colour
+reached the cold or hot colour (`XEWE_PAD_COLOR_MIN_MS`, `XEWE_PAD_COLOR_STEP` in
+`src/PadWeb/Config.h`). The led module stores each change.
 
 ```text
 $pad set_cold 00FFFF
@@ -81,7 +83,7 @@ $pad set_hot FF0000
 
 | Setting | Default | Change with |
 |---|---|---|
-| Sensor read | every 500 ms (5 s while offline) | fixed |
+| Sensor read | every 500 ms (5 s while offline) | build time: `XEWE_MLX90614_POLL_MS`, `XEWE_MLX90614_OFFLINE_POLL_MS` |
 | Curve update | every 1000 ms | `$fan set curve_ms 500` (100–60000) |
 | Stale reading | 10000 ms | `$fan set stale_ms 20000` (1000–600000) |
 

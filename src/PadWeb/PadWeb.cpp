@@ -1,34 +1,45 @@
 // SPDX-FileCopyrightText: 2025-2026 Maxim Dokukin (maxdokukin.com)
 // SPDX-License-Identifier: GPL-3.0-only
-// xewe-os-laptop-cooling-pad/src/PadWeb/PadWeb.cpp
+// xewe-chill-os/src/PadWeb/PadWeb.cpp
 
 #include "PadWeb.h"
 
 #include <ArduinoJson.h>
 
 #include <cstdio>
+#include <cstdlib>
 #include <utility>
 
-// page assets, copied unchanged from the 0.0.12 firmware
+// the pad page
 #include "index_html.h"
 #include "script_js.h"
 #include "styles_css.h"
 
 
 namespace {
-// hex colours: the core's helpers (core 2.1, Utils/String.h): "#rrggbb" or "rrggbb", either case
+// hex colours: the core's helpers (xewe::color): "#rrggbb" or "rrggbb", either case
 curve_math::Rgb parse_or(const std::string& hex, curve_math::Rgb fallback) {
     curve_math::Rgb c = fallback;
-    xewe::str::parse_hex_color(hex, c.r, c.g, c.b);     // outputs untouched on failure
+    xewe::color::parse_hex_color(hex, c.r, c.g, c.b);     // outputs untouched on failure
     return c;
 }
 
 // any accepted form -> the stored form "#RRGGBB"; false (out untouched) when not a colour
 bool normalize_hex(const std::string& hex, std::string& out) {
     uint8_t r, g, b;
-    if (!xewe::str::parse_hex_color(hex, r, g, b)) return false;
-    out = xewe::str::to_hex_color(r, g, b);
+    if (!xewe::color::parse_hex_color(hex, r, g, b)) return false;
+    out = xewe::color::to_hex_color(r, g, b);
     return true;
+}
+
+// true when a channel differs by `step` or more, or `exact` and any channel differs (an edge colour
+// is shown exactly, not left `step` short)
+bool moved(const std::array<uint8_t, 3>& shown, const std::array<uint8_t, 3>& target, int step, bool exact) {
+    for (size_t i = 0; i < 3; ++i) {
+        const int d = std::abs(static_cast<int>(shown[i]) - static_cast<int>(target[i]));
+        if (d >= step || (exact && d != 0)) return true;
+    }
+    return false;
 }
 
 bool same_curve(const std::vector<FanCurvePoint>& a, const std::vector<FanCurvePoint>& b) {
@@ -41,7 +52,7 @@ bool same_curve(const std::vector<FanCurvePoint>& a, const std::vector<FanCurveP
 } // namespace
 
 
-PadWeb::PadWeb(xewe::Os& host, Fan& fan_ref, Mlx90614& mlx90614_ref, Led& led_ref, PadWebConfig config)
+PadWeb::PadWeb(xewe::Os& host, Fan& fan_ref, Mlx90614& mlx90614_ref, Led& led_ref)
       : xewe::Module(host,
                /* id                  */ "pad",
                /* name                */ "Pad",
@@ -52,7 +63,6 @@ PadWeb::PadWeb(xewe::Os& host, Fan& fan_ref, Mlx90614& mlx90614_ref, Led& led_re
       , fan(fan_ref)
       , mlx90614(mlx90614_ref)
       , led(led_ref)
-      , config(std::move(config))
 {
     // no add_requirement(): the page and the strip keep working while fan or mlx90614 is disabled
     // the glue: every sensor reading (and every offline poll) goes to the fan curve
@@ -76,7 +86,7 @@ PadWeb::PadWeb(xewe::Os& host, Fan& fan_ref, Mlx90614& mlx90614_ref, Led& led_re
 
     register_command({
         "lights",
-        "Strip shows the temperature (on) or the led mode (off): <on|off>",
+        "Strip follows the temperature (on) or is left to $led (off): <on|off>",
         "$pad lights on",
         1,
         [this](xewe::span<const std::string> args){ lights_cmd(args); }
@@ -97,7 +107,7 @@ void PadWeb::begin_routines_required() {
         data = PadStore{};                                  // first boot: store the defaults
         save();
     } else if (!stored.has("schema") || stored.schema != PadStore::SCHEMA) {
-        // has(): a blob without a readable `schema` field is foreign too, not "schema 1 by default" (CC7)
+        // has(): a blob without a readable `schema` field is foreign too, not "schema 1 by default"
         // another firmware's layout: never reinterpret it, never overwrite it at boot
         os.serial.print("Pad: stored colours are from another firmware (schema " + std::to_string(stored.schema) +
                         ", expected " + std::to_string(PadStore::SCHEMA) +
@@ -109,34 +119,33 @@ void PadWeb::begin_routines_required() {
         if (!normalize_hex(data.cold_color, norm)) data.cold_color = PadStore{}.cold_color;
         if (!normalize_hex(data.hot_color, norm))  data.hot_color  = PadStore{}.hot_color;
     }
-    last_frame_ms = millis();
+    last_update_ms = millis();
 }
 
 void PadWeb::loop() {
     const uint32_t now = millis();
-    if (now - last_frame_ms < config.frame_ms) return;
+    if (now - last_update_ms < XEWE_PAD_UPDATE_MS) return;
+    last_update_ms = now;
     update_lights(now);
 }
 
 void PadWeb::reset(const bool verbose, const bool do_restart, const bool keep_enabled) {
     data = PadStore{};
-    if (filling) led.clear_fill();
-    filling = false;
     // wipes the "pad" namespace: the next boot stores the default colours again
     Module::reset(verbose, do_restart, keep_enabled);
 }
 
 std::string PadWeb::status(const bool verbose) const {
     std::string s = Module::status(false);
-    s += std::string("\n  Lights: ") + (data.lights ? "on (strip shows the temperature)" : "off (strip shows the led mode)");
+    s += std::string("\n  Lights: ") + (data.lights ? "on (strip follows the temperature)" : "off (strip left to $led)");
     s += "\n  Cold color: " + data.cold_color + "\n  Hot color: " + data.hot_color;
     char buf[64];
     if (std::isnan(temperature)) snprintf(buf, sizeof(buf), "\n  Temperature: offline (no sensor reading)");
     else                         snprintf(buf, sizeof(buf), "\n  Temperature: %.2f C", temperature);
     s += buf;
     if (data.lights) {
-        s += "\n  Strip: " + std::string(lit ? "lit " : "dark ") +
-             xewe::str::to_hex_color(pad_fx::to_byte(shown.r), pad_fx::to_byte(shown.g), pad_fx::to_byte(shown.b));
+        const auto rgb = led.get_rgb();
+        s += "\n  Strip: " + std::string(lit ? "lit " : "dark ") + xewe::color::to_hex_color(rgb[0], rgb[1], rgb[2]);
     }
     if (verbose) os.serial.print(s);
     return s;
@@ -149,31 +158,42 @@ void PadWeb::on_temperature(float object_c, float, bool online) {
     fan.set_temperature(temperature, this);
 }
 
-void PadWeb::update_lights(uint32_t now) {
-    const float dt = (now - last_frame_ms) / 1000.0f;
-    last_frame_ms = now;
+bool PadWeb::may_change(uint32_t now) const {
+    return !changed_once || now - last_change_ms >= XEWE_PAD_COLOR_MIN_MS;
+}
 
-    if (!data.lights) {
-        if (filling) led.clear_fill();      // hand the strip back to the led module's mode
-        filling = false;
-        return;
-    }
+// The strip follows the curve: on/off with hysteresis, Solid mode, the curve colour. Every led call
+// is stored by the led module, so each is sent only on a real change and rate limited.
+void PadWeb::update_lights(uint32_t now) {
+    if (!data.lights || !may_change(now)) return;
 
     const auto& points = fan.get_curve();
     lit = curve_math::leds_on(points, temperature, lit);
-    pad_fx::Colour target;
-    if (lit) {
-        const curve_math::Rgb c = curve_math::led_colour(points, temperature,
-                                                         parse_or(data.cold_color, {0, 255, 255}),
-                                                         parse_or(data.hot_color,  {255, 0, 0}));
-        target = {static_cast<float>(c.r), static_cast<float>(c.g), static_cast<float>(c.b)};
+    bool changed = false;
+    if (led.get_state() != lit) {
+        led.sync_state(lit, this);
+        changed = true;
     }
-    pad_fx::glide_step(shown, target, pad_fx::glide_factor(config.glide_speed, dt));
-    // a `$led mode set` or `$led fill off` ends the fill: take the strip back; otherwise fill only on a change
-    const LedRgb c{pad_fx::to_byte(shown.r), pad_fx::to_byte(shown.g), pad_fx::to_byte(shown.b)};
-    const LedRgb f = led.fill_color();
-    if (!filling || !led.fill_active() || f.r != c.r || f.g != c.g || f.b != c.b) led.fill(c);
-    filling = true;
+    if (lit) {
+        if (led.get_current_mode_id() != SOLID_MODE) {
+            led.sync_mode(SOLID_MODE, this);
+            changed = true;
+        }
+        const curve_math::Rgb cold = parse_or(data.cold_color, {0, 255, 255});
+        const curve_math::Rgb hot  = parse_or(data.hot_color,  {255, 0, 0});
+        const curve_math::Rgb c    = curve_math::led_colour(points, temperature, cold, hot);
+        const std::array<uint8_t, 3> target{c.r, c.g, c.b};
+        const bool edge = (c.r == cold.r && c.g == cold.g && c.b == cold.b) ||
+                          (c.r == hot.r && c.g == hot.g && c.b == hot.b);
+        if (moved(led.get_rgb(), target, XEWE_PAD_COLOR_STEP, edge)) {
+            led.sync_color(target, this);
+            changed = true;
+        }
+    }
+    if (changed) {
+        last_change_ms = now;
+        changed_once   = true;
+    }
 }
 
 // ---- settings -----------------------------------------------------------------------------------
@@ -225,7 +245,8 @@ std::string PadWeb::get_ui_json() const {
 std::string PadWeb::get_lights_json() const {
     JsonDocument doc;
     doc["lights"] = data.lights;
-    doc["shown"]  = xewe::str::to_hex_color(pad_fx::to_byte(shown.r), pad_fx::to_byte(shown.g), pad_fx::to_byte(shown.b));
+    const auto rgb = led.get_rgb();
+    doc["shown"]  = xewe::color::to_hex_color(rgb[0], rgb[1], rgb[2]);
     if (std::isnan(temperature)) doc["temperature"] = nullptr;
     else                         doc["temperature"] = temperature;
     doc["led_brightness"] = led.get_brightness();
@@ -334,6 +355,6 @@ void PadWeb::lights_cmd(xewe::span<const std::string> args) {
         os.serial.print("Usage: $pad lights <on|off>");
         return;
     }
-    os.serial.print(std::string("Pad lights ") + (data.lights ? "on: the strip shows the temperature."
-                                                              : "off: the strip shows the led module's mode."));
+    os.serial.print(std::string("Pad lights ") + (data.lights ? "on: the strip follows the temperature."
+                                                              : "off: the strip is left to $led."));
 }

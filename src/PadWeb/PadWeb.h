@@ -1,34 +1,30 @@
 // SPDX-FileCopyrightText: 2025-2026 Maxim Dokukin (maxdokukin.com)
 // SPDX-License-Identifier: GPL-3.0-only
-// xewe-os-laptop-cooling-pad/src/PadWeb/PadWeb.h
+// xewe-chill-os/src/PadWeb/PadWeb.h
 //
-// The cooling pad's own code, everything else is repo modules (fan, mlx90614, led, wifi,
-// web-interface). PadWeb is a project-local module (id `pad`, NVS namespace `pad`) that
+// The cooling pad's glue, a project-local module (id `pad`, NVS namespace `pad`) that
 //   1. links the sensor to the fan curve: it is an Mlx90614Listener and passes every reading to
 //      fan.set_temperature() (offline -> NaN -> the curve's fail-safe: fans at the last point);
-//   2. lights the strip along the same curve: below the first point off (0.5 C hysteresis), cold
-//      colour at the first point, hot at the last, a blend in between; the colour glides (Glide.h)
-//      and is shown with led.fill() (RAM only, no NVS write per frame). `$pad lights off` hands the
-//      strip back to the led module's modes;
-//   3. serves the pad page at /pad and at / (web-interface root hook, core 2.1 pass; the command
-//      console moves to /console) and its JSON API on the web-interface module's server
-//      (attach(web_interface), MIGRATION.md CP5, CP22).
+//   2. colours the strip along the same curve through the led module: off below the first point
+//      (0.5 C hysteresis), cold colour at the first point, hot at the last, a blend in between. A
+//      colour change is a led.sync_color() (stored by the led module), so it is sent only when the
+//      colour moved by XEWE_PAD_COLOR_STEP and at most once per XEWE_PAD_COLOR_MIN_MS.
+//      `$pad lights off` leaves the strip to the led module's own commands;
+//   3. serves the pad page at /pad and at / (web-interface root hook; the command console moves to
+//      /console) and its JSON API on the web-interface module's server (attach(web_interface)).
 #pragma once
+
+#include <string>
+#include <vector>
 
 #include <WebServer.h>
 #include <XeWeCore.h>
 #include <XeWeModules.h>
 
-#include <string>
-#include <vector>
+#include "../Fan/Fan.h"
+#include "../Mlx90614/Mlx90614.h"
+#include "Config.h"
 
-#include "Glide.h"
-
-
-struct PadWebConfig {
-    float                       glide_speed                 = 8.0f;     // exponential approach, 1/s
-    uint32_t                    frame_ms                    = 20;       // 50 fps, the led render rate
-};
 
 // Stored settings (NVS namespace "pad", key "data"). Append only; bump `schema` on a change.
 struct PadStore : xewe::FlexData<PadStore> {
@@ -39,10 +35,10 @@ struct PadStore : xewe::FlexData<PadStore> {
     bool                        lights                      = true;     // strip follows the curve
 
     static constexpr auto fields() {
-        return std::make_tuple(fld("schema",     &PadStore::schema),
-                               fld("cold_color", &PadStore::cold_color),
-                               fld("hot_color",  &PadStore::hot_color),
-                               fld("lights",     &PadStore::lights));
+        return std::make_tuple(xewe::fld("schema",     &PadStore::schema),
+                               xewe::fld("cold_color", &PadStore::cold_color),
+                               xewe::fld("hot_color",  &PadStore::hot_color),
+                               xewe::fld("lights",     &PadStore::lights));
     }
 };
 
@@ -52,8 +48,7 @@ public:
                                 PadWeb                      (xewe::Os&    host,
                                                              Fan&         fan_ref,
                                                              Mlx90614&    mlx90614_ref,
-                                                             Led&         led_ref,
-                                                             PadWebConfig config = {});
+                                                             Led&         led_ref);
 
     void                        begin_routines_required     ()                              override;
     void                        loop                        ()                              override;
@@ -76,12 +71,13 @@ public:
 
     // {"curve_edge_colors":{"start","end"},"temp_curve":[{"temp","speed"}]} (the page's shape)
     std::string                 get_ui_json                 ()                              const;
-    // {"lights","shown":"#RRGGBB","temperature"|null,"led_brightness","led_state"}
+    // {"lights","shown":"#RRGGBB" (the led colour),"temperature"|null,"led_brightness","led_state"}
     std::string                 get_lights_json             ()                              const;
 
 private:
     void                        save                        ()                              const;
     void                        update_lights               (uint32_t now);
+    bool                        may_change                  (uint32_t now)                  const;
     void                        send_json                   (const std::string& body, int code = 200);
     void                        handle_ui_config_post       ();
 
@@ -92,13 +88,13 @@ private:
     Fan&                        fan;
     Mlx90614&                   mlx90614;
     Led&                        led;
-    PadWebConfig                config;
 
     PadStore                    data;
     WebServer*                  server                      {nullptr};
     float                       temperature                 {NAN};      // last reading, NaN offline
+    static constexpr uint8_t    SOLID_MODE                  = 0;        // the led module's Solid mode id
     bool                        lit                         {true};     // strip state, with hysteresis
-    bool                        filling                     {false};    // led.fill() owned by us
-    pad_fx::Colour              shown                       {};
-    uint32_t                    last_frame_ms               {0};
+    uint32_t                    last_update_ms              {0};
+    uint32_t                    last_change_ms              {0};
+    bool                        changed_once                {false};    // no rate limit before the first change
 };

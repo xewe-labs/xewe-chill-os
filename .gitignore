@@ -2,11 +2,18 @@
 build/
 # src/Modules.h: includes and declares the selected modules (written by xewe modules generate).
 src/Modules.h
+# run.sh: written by ./setup.sh on every run.
+/run.sh
 
-# Credentials and settings for xewe provision/test (see .env.example in xewe-os-tools).
+# Credentials and settings for xewe provision/test; yours to create (the tools README lists the keys).
+# The dot-suffixed variants (per bench, per board) are ignored too.
 .env
+.env.*
 
-# static/firmware/releases/ IS committed (release artefacts for the web flasher).
+# Release images: GitHub Release assets, written under static/ at release time, never committed.
+/static/
+# releases/<version>/logs/ are local run logs (D27).
+releases/*/logs/
 
 # Editors and OS
 .DS_Store
@@ -15,5 +22,6 @@ src/Modules.h
 *.swp
 *~
 
-# Python bytecode written by xewe test / pytest
+# Python bytecode and lint cache written by xewe test / pytest / ruff
 __pycache__/
+.ruff_cache/

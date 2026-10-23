@@ -9,7 +9,7 @@ Format: `$<group> <command> [arguments]`.
 | `$help <group>` | List the commands of one group, e.g. `$help pad` |
 
 Every group has `status` and `reset`. `reset` clears that group's settings and restarts the device.
-Groups that can be switched off also have `enable` and `disable`: `fan`, `mlx90614`, `wifi`.
+Groups that can be switched off also have `enable` and `disable`: `fan`, `mlx90614`, `led`, `wifi`.
 Groups with a settings table also have `get <key>`, `set <key> <value>` and `schema`.
 
 ## `$pad`: the temperature indicator
@@ -18,13 +18,17 @@ Groups with a settings table also have `get <key>`, `set <key> <value>` and `sch
 |---|---|---|---|
 | `set_cold` | `RRGGBB` or `#RRGGBB` | `$pad set_cold 00FFFF` | Strip colour at the first curve point. Saved. |
 | `set_hot` | `RRGGBB` or `#RRGGBB` | `$pad set_hot FF0000` | Strip colour at the last curve point. Saved. |
-| `lights` | `on` or `off` | `$pad lights off` | `on`: the strip shows the temperature. `off`: the strip shows the LED mode from `$led mode`. Saved. |
+| `lights` | `on` or `off` | `$pad lights off` | `on`: the strip follows the temperature (state, Solid mode, colour). `off`: the strip is left as it is, for the `$led` commands. Saved. |
 | `print_json` | | `$pad print_json` | Colours, curve and strip state as JSON. |
-| `status` | | `$pad status` | Lights on/off, both colours, temperature, the colour shown now. |
+| `status` | | `$pad status` | Lights on/off, both colours, temperature, the strip colour now. |
 | `reset` | | `$pad reset` | Colours back to cyan and red, lights on. Restarts. |
 
 Replies: `Cold color set to #00FFFF`, `Failed to set hot color. Use RRGGBB or #RRGGBB.`,
-`Pad lights off: the strip shows the led module's mode.`
+`Pad lights off: the strip is left to $led.`
+
+With lights on, the pad changes the strip at most once every 2 s (`XEWE_PAD_COLOR_MIN_MS`), and only
+when a colour channel moved by 8 or more (`XEWE_PAD_COLOR_STEP`) or the colour reached the cold or
+hot colour. The led module stores each change.
 
 ## `$fan`: fans and the curve
 
@@ -66,22 +70,28 @@ Replies: `Cold color set to #00FFFF`, `Failed to set hot color. Use RRGGBB or #R
 
 ## `$led`: the strip
 
+With `$pad lights on` the pad sets the strip's state, mode and colour itself; run `$pad lights off`
+first to keep a change made here.
+
 | Command | Arguments | Example | What it does |
 |---|---|---|---|
-| `on` / `off` | | `$led off` | Fade the strip in or out. Also hides the indicator. Saved. |
-| `brightness` | `<0-255>` | `$led brightness 64` | Brightness, also of the indicator. Saved. |
-| `set` | `<key> <value>` | `$led set num_led 12` | Strip settings: `num_led`, `pin_data`, `chip`, `colorder`, `brightness`, `state`, `voltage`. `pin_data` and `chip` apply after `$system restart`. |
-| `get` / `schema` | | `$led get pin_data` | Print settings. |
-| `fill` | `<rrggbb> [ms]` or `off` | `$led fill ff0000` | Show one colour. With `$pad lights on` the indicator takes the strip back on the next frame. |
-| `mode list` | | `$led mode list` | LED modes. |
-| `mode set` | `<id or name>` | `$led mode set rainbow` | Choose a mode. Visible after `$pad lights off`. |
-| `mode color` | `<rrggbb>` | `$led mode color ff8000` | Colour of the current mode. |
-| `mode param` | `<mode> <key> <value>` | `$led mode param 5 speed 7` | A mode parameter. |
-| `mode speed` | `<value>` | `$led mode speed 10` | Speed of the current mode. |
-| `mode reset_params` | `[mode]` | `$led mode reset_params` | Mode parameters back to defaults. |
-| `checksum` | | `$led checksum` | CRC-32 of the current frame (for tests). |
-| `status` | | `$led status` | Settings, pins in use, brightness, `Source: fill` (indicator) or `mode`. |
+| `turn_on` / `turn_off` / `toggle_state` | | `$led turn_off` | Fade the strip in or out. Saved. |
+| `set_state` | `0` or `1` | `$led set_state 1` | The same as a value. |
+| `set_brightness` | `<0-255>` | `$led set_brightness 64` | Brightness. Saved. |
+| `adj_brightness` | `<delta>` | `$led adj_brightness -10` | Change the brightness by a step. |
+| `set_rgb` | `<r> <g> <b>` | `$led set_rgb 255 128 0` | Colour of the current mode. Also `set_r`, `set_g`, `set_b`, `adj_rgb`. |
+| `set_hsv` | `<h> <s> <v>` | `$led set_hsv 75 255 255` | The same in HSV. Also `set_hue`, `set_sat`, `set_val`, `adj_hsv`. |
+| `set_mode` | `<id>` | `$led set_mode 0` | Choose a mode (0 = Solid). `adj_mode 1` picks the next. |
+| `set_mode_param` | `<key> <value>` | `$led set_mode_param speed 7` | A parameter of the current mode; `get_mode_params` lists them. |
+| `reset_current_mode` | | | The current mode's parameters back to defaults. |
+| `set_length` | `<count>` | `$led set_length 12` | Number of LEDs. |
+| `set_color_order` | `RGB` ... `BGR` | `$led set_color_order GRB` | Colour order of the strip. |
+| `set` | `<key> <value>` | `$led set chip 0` | Strip settings: `use_clk`, `chip`, `voltage`, `lines`, `num_led`, `colorder`. |
+| `get` / `schema` | | `$led get num_led` | Print settings. |
+| `status` | | `$led status` | Settings, colour, brightness, state and mode. |
 | `reset` | | `$led reset` | Strip settings and modes back to defaults. Restarts. |
+
+The data pin is fixed at build time (`XEWE_LED_PIN_DATA` in `Config.h`, see [wiring.md](wiring.md)).
 
 ## `$wifi`
 

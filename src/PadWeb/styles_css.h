@@ -1,6 +1,6 @@
 // SPDX-FileCopyrightText: 2025-2026 Maxim Dokukin (maxdokukin.com)
 // SPDX-License-Identifier: GPL-3.0-only
-// xewe-os-laptop-cooling-pad/src/PadWeb/styles_css.h: the 0.0.12 pad page asset, unchanged
+// xewe-chill-os/src/PadWeb/styles_css.h: the pad page asset
 #pragma once
 #include <pgmspace.h>
 static const char STYLES_CSS[] PROGMEM = R"rawliteral(

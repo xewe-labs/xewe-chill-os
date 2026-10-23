@@ -4,23 +4,22 @@
 schema = 1
 
 [project]
-name = "xewe-os-laptop-cooling-pad"
-version = "2.0.0"
+name = "xewe-chill-os"
+version = "0.1.0"
 chip = "c3"
 
 [core]
 repo = "https://github.com/xewe-labs/xewe-os-core"
-ref = "latest"
+ref = "3.1.2"
 
 [modules]
 repo = "https://github.com/xewe-labs/xewe-os-modules"
-ref = "latest"
-selected = ["wifi", "web-interface", "fan", "mlx90614", "led"]
+ref = "led/3.1.2"
+selected = ["wifi", "web-interface", "led"]
 
 [tools]
 repo = "https://github.com/xewe-labs/xewe-os-tools"
-ref = "latest"
+ref = "3.1.6"
 
 [libraries]
 ArduinoJson = { repo = "https://github.com/bblanchon/ArduinoJson", ref = "v7.4.3" }
-FastLED = { repo = "https://github.com/FastLED/FastLED", ref = "3.10.3" }
