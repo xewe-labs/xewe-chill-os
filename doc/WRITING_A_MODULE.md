@@ -33,24 +33,20 @@ the prefix of its `Config.h` together, and add its lines to `xewe-chill-os.ino`.
 
 One brand word, every form derived from it.
 
-- **Prose:** **XeWe OS** (product), **XeWe** (brand): "XeWe OS firmware", "the XeWe tools".
-- **Repos, packages, folders, files, CLI, env home:** lowercase `xewe`, kebab `xewe-os-*`
-  (`xewe-os-core`, `xewe.toml`, `xewe`, `~/.xewe-os`).
-- **C++ namespace:** `xewe::` (`xewe::Module`, `xewe::str::parse_hex_color`).
-- **C++ and Python type names:** `XeWe` prefix (`XeWeCore`, `XeWeOs`, `XeWeModules`,
-  `XeWeError`, `XeWeContext`).
-- **Macros, build defines, environment variables of the core and tools:** `XEWE_*`
-  (`XEWE_TESTING`, `XEWE_HOME`, `XEWE_CORE_DEVICE_NAME`).
-- **The core's configuration values:** `XEWE_CORE_<PARAM>` (`XEWE_CORE_SERIAL_BAUD`).
-- **A modules-repo module's compile time values:** `XEWE_<SLUG>_<PARAM>` (`XEWE_WIFI_DEBUG`).
-- **Values of a project-local module** (`src/<Folder>/Config.h`): `XEWE_<ID>_<PARAM>`
-  (`XEWE_SIMPLE_MODULE_PERIOD_S`, `XEWE_FULL_MODULE_LEVEL`).
-- **Module slug** (modules repo folder, `--modules` names): lowercase kebab,
-  `^[a-z0-9][a-z0-9-]*$` (`wifi`, `web-interface`).
-- **Module id** (CLI group and NVS namespace): lowercase snake, `^[a-z][a-z0-9_]*$`, at most
-  15 characters, never branded (`$wifi`, `$full_module`).
-- **Module folder and class:** PascalCase, `^[A-Z][A-Za-z0-9]*$` (`Wifi`, `WebInterface`).
-- **Arduino library name:** `XeWeCore` (registered; never changes).
+| Thing | Form |
+|---|---|
+| Prose | **XeWe OS** (product), **XeWe** (brand): "XeWe OS firmware", "the XeWe tools" |
+| Repos, packages, folders, files, CLI, env home | lowercase `xewe`, kebab `xewe-os-*` (`xewe-os-core`, `xewe.toml`, `xewe`, `~/.xewe-os`) |
+| C++ namespace | `xewe::` (`xewe::Module`, `xewe::str::parse_hex_color`) |
+| C++ and Python type names | `XeWe` prefix (`XeWeCore`, `XeWeOs`, `XeWeModules`, `XeWeError`, `XeWeContext`) |
+| Macros, build defines, environment variables of the core and tools | `XEWE_*` (`XEWE_TESTING`, `XEWE_HOME`, `XEWE_CORE_DEVICE_NAME`) |
+| The core's configuration values | `XEWE_CORE_<PARAM>` (`XEWE_CORE_SERIAL_BAUD`) |
+| A modules-repo module's compile time values | `XEWE_<SLUG>_<PARAM>` (`XEWE_WIFI_DEBUG`) |
+| Values of a project-local module (`src/<Folder>/Config.h`) | `XEWE_<ID>_<PARAM>` (`XEWE_SIMPLE_MODULE_PERIOD_S`, `XEWE_FULL_MODULE_LEVEL`) |
+| Module slug (modules repo folder, `--modules` names) | lowercase kebab, `^[a-z0-9][a-z0-9-]*$` (`wifi`, `web-interface`) |
+| Module id (CLI group and NVS namespace) | lowercase snake, `^[a-z][a-z0-9_]*$`, at most 15 characters, never branded (`$wifi`, `$full_module`) |
+| Module folder and class | PascalCase, `^[A-Z][A-Za-z0-9]*$` (`Wifi`, `WebInterface`) |
+| Arduino library name | `XeWeCore` (registered; never changes) |
 
 Further rules:
 
@@ -126,7 +122,7 @@ an unattended device never waits forever.
 ## Config.h of a module
 
 A project-local module keeps its values in `src/<Folder>/Config.h`, in the module form of the
-core's [doc/config.md](https://github.com/xewe-labs/xewe-os-core/blob/main/doc/config.md). The
+core's [doc/CONFIG.md](https://github.com/xewe-labs/xewe-os-core/blob/main/doc/CONFIG.md). The
 file is pure preprocessor: it includes nothing and declares no code. After the header (three
 SPDX lines, the path, one multi-line block comment, `#pragma once`) come two sections in this
 order, each between its start and end marker lines, exactly as written:
@@ -187,7 +183,7 @@ Mlx90614 owns a listener set for its readings and PadWeb adds itself to it from 
 Keep a module in `src/` while only this firmware needs it. A module that other firmwares need
 moves to [xewe-os-modules](https://github.com/xewe-labs/xewe-os-modules), as `modules/<slug>/`,
 where it follows that repository's
-[contract](https://github.com/xewe-labs/xewe-os-modules/blob/main/doc/contract.md) and is built
+[contract](https://github.com/xewe-labs/xewe-os-modules/blob/main/doc/CONTRACT.md) and is built
 and tested through an `xewe-os` checkout. There its values get a block in each project's
 `Config.h` under the prefix `XEWE_<SLUG>_`, and `xewe modules validate` checks its slug, id and
 folder.

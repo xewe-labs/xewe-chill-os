@@ -1,11 +1,7 @@
 // SPDX-FileCopyrightText: 2025-2026 Maxim Dokukin (maxdokukin.com)
 // SPDX-License-Identifier: GPL-3.0-only
 // xewe-chill-os/tests/unit/test_curve.cpp
-//
-// Unit test of src/Fan/Curve.h (no Arduino): built and run by
-// tests/unit/test_fan.py::test_curve_unit_gpp with g++ -std=c++17 -Wall -Wextra -Werror.
-// Prints one line per check, then "PASSED|FAILED: N check(s), F failure(s)"; exits non-zero on a
-// failure.
+// Built and run by tests/unit/test_fan.py::test_curve_unit_gpp; exits non-zero on a failure.
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -162,8 +158,7 @@ int main() {
         CHECK(state && flips == 2); // on again only at 22.0 C
     }
 
-    // ---- colours: cold/hot selection (hex parsing is the core's xewe::color::parse_hex_color)
-    // ----
+    // ---- colours: cold/hot selection ----
     {
         const Rgb cold{0, 255, 255}, hot{255, 0, 0};
         CHECK(same(led_colour(def, 10.0f, cold, hot), cold));

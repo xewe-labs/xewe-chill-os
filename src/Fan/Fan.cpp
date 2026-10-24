@@ -51,8 +51,7 @@ Fan::Fan(xewe::Os& host)
         {"add_w_tach", "Add a fan with a tachometer: <pwm_pin> <tach_pin>", "$fan add_w_tach 9 10",
             2, [this](xewe::span<const std::string> args) { add_w_tach_cmd(args); }});
 
-    // `set` stays ours (speed per pin); a non-numeric first argument is a table setting (curve_ms,
-    // ...)
+    // a non-numeric first argument to `set` is a table setting, such as curve_ms
     register_command(
         {"set", "Set the speed of one fan (0-255): <pwm_pin> <speed>, or a setting: <key> <value>",
             "$fan set 9 255", 2, [this](xewe::span<const std::string> args) { set_cmd(args); }});
@@ -66,9 +65,7 @@ Fan::Fan(xewe::Os& host)
     register_command({"temp", "Feed a temperature to the curve (as a sensor would): <temp_C>",
         "$fan temp 30.5", 1, [this](xewe::span<const std::string> args) { temp_cmd(args); }});
 
-    // ---- curve: one `curve` command per argument count, dispatched on the first argument
-    // ---------- (the core picks the registration whose count matches; on a mismatch it shows the
-    // first usage)
+    // one `curve` registration per argument count; the core picks the one whose count matches
     register_command({"curve", "Curve: list", "$fan curve list", 1,
         [this](xewe::span<const std::string> args) { curve_cmd(args); }});
 
@@ -112,8 +109,7 @@ void Fan::loop() {
         f->pulse_count = 0;
         interrupts();
 
-        // 2 pulses per revolution: rpm = pulses / 2 * 60000 / dt (64-bit: pulses * 30000 wraps
-        // 32 bits above 143 165 pulses, e.g. a floating or ringing tach line after a loop stall)
+        // 64-bit, because pulses * 30000 wraps 32 bits on a ringing tach line after a loop stall
         const uint64_t rpm64 = (static_cast<uint64_t>(pulses) * 30000u) / dt;
         const uint32_t current_rpm = rpm64 > UINT32_MAX ? UINT32_MAX : static_cast<uint32_t>(rpm64);
         f->last_calc_time = now;
@@ -244,8 +240,7 @@ uint32_t Fan::get_rpm(uint8_t pwm_pin) const {
 bool Fan::add(uint8_t pwm_pin, uint8_t tach_pin) {
     if (is_disabled() || !pins_ok(pwm_pin, tach_pin))
         return false;
-    // a pin already used by another fan (as PWM or tach) would re-route its LEDC output or replace
-    // its tach interrupt
+    // a shared pin would re-route another fan's LEDC output or replace its tach interrupt
     for (const auto* f : fans) {
         if (f->has_tach && f->pin_tach == pwm_pin)
             return false;
@@ -334,8 +329,7 @@ void Fan::clear_fans() {
 }
 
 Fan::FanData* Fan::create_fan(uint8_t pwm, uint8_t tach, uint8_t speed) {
-    // core pin registry: a pin another module holds is refused (and reported); ours are released in
-    // free_fan
+    // the core pin registry refuses a pin another module holds; free_fan releases ours
     if (!xewe::pins::claim(pwm, id.c_str()))
         return nullptr;
     if (tach != UNSET_PIN && !xewe::pins::claim(tach, id.c_str())) {
@@ -378,9 +372,7 @@ void Fan::load() {
         return;
     }
 
-    // first boot: the default fans (XEWE_FAN_FAN1_* / FAN2_*), then store them. Another firmware's
-    // layout (schema mismatch): the defaults from RAM only; the stored blob is never reinterpreted
-    // and never overwritten at boot (the first fan change replaces it).
+    // another firmware's layout: defaults in RAM only, and its blob is not overwritten at boot
     for (const auto& d : DEFAULT_FANS) {
         if (pins_ok(d[0], d[1]))
             create_fan(d[0], d[1], 0);
@@ -430,8 +422,7 @@ void Fan::run_curve(uint32_t now, bool force) {
     if ((!curve_active() && !never) || (!force && now - last_curve_ms < curve_ms))
         return;
     last_curve_ms = now;
-    // a source that stopped (or never started) reporting counts as offline: NaN -> last point
-    // (fail-safe hot)
+    // a source that stopped or never started reporting counts as offline, which means hot
     const float t = (never || now - temperature_ms > stale_ms) ? NAN : temperature;
     const uint8_t before = curve_target_pct;
     curve_target_pct = curve_math::target_speed(curve.points, t);
@@ -521,8 +512,7 @@ void Fan::load_curve() {
         default_curve(); // first boot: store the default curve
         save_curve();
     } else if (!stored.has("schema") || !curve_math::schema_ok(stored.schema)) {
-        // has(): a blob without a readable `schema` field is foreign too, not "schema 1 by default"
-        // another firmware's layout: never reinterpret it, never overwrite it at boot
+        // a blob without a readable `schema` is foreign too; it is never overwritten at boot
         os.serial.print("! Fan: curve: " + curve_math::schema_message(stored.schema));
         default_curve();
     } else {

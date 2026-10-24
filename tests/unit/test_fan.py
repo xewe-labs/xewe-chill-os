@@ -1,8 +1,7 @@
 # SPDX-FileCopyrightText: 2025-2026 Maxim Dokukin (maxdokukin.com)
 # SPDX-License-Identifier: GPL-3.0-only
 # xewe-chill-os/tests/unit/test_fan.py
-"""Unit tests of the project-local Fan module (src/Fan/): source facts and the pure curve maths
-(src/Fan/Curve.h, built with the host g++), no board and no build. The sketch declares it."""
+"""Source checks of src/Fan/, and the curve maths of Curve.h built with g++."""
 
 import re
 import shutil

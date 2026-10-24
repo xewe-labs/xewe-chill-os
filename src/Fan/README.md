@@ -1,4 +1,4 @@
-# fan — 4-wire PWM fans, tachometer RPM and a temperature curve
+# src/Fan: 4-wire PWM fans, tachometer RPM and a temperature curve
 
 ## Overview
 
@@ -142,7 +142,7 @@ caller's task (the curve target from `loop()`); keep them short.
 ### Tests
 
 Unit: `tests/unit/test_fan.py` (builds `tests/unit/test_curve.cpp` with g++). Board:
-`tests/board/test_fan.py`. Run with `xewe test` ([doc/testing.md](../../doc/testing.md)).
+`tests/board/test_fan.py`. Run with `xewe test` ([doc/TESTING.md](../../doc/TESTING.md)).
 
 ## Known issues
 

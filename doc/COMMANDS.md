@@ -91,7 +91,7 @@ first to keep a change made here.
 | `status` | | `$led status` | Settings, colour, brightness, state and mode. |
 | `reset` | | `$led reset` | Strip settings and modes back to defaults. Restarts. |
 
-The data pin is fixed at build time (`XEWE_LED_PIN_DATA` in `Config.h`, see [wiring.md](wiring.md)).
+The data pin is fixed at build time (`XEWE_LED_PIN_DATA` in `Config.h`, see [WIRING.md](WIRING.md)).
 
 ## `$wifi`
 

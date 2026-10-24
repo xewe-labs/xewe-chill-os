@@ -1,7 +1,4 @@
 # ci.yml: build + host tests on every push and pull request; release on a version tag (X.Y.Z, no `v`).
-# The logic lives in xewe-os-tools (.github/workflows/, doc/ci.md); this file only calls it.
-# The release builds c3, c6 and s3 and publishes a GitHub Release: the images and the release card
-# as assets, the notes as the Release text. Binaries are never committed (doc/architecture.md D26).
 name: ci
 on:
   push:

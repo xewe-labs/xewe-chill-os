@@ -1,6 +1,4 @@
-"""Unit tests of the project's Config.h (the core's doc/config.md): source facts only, no board and
-no build. The tools append module blocks to this file and never rewrite it. A generated line is a
-comment; an uncommented `#define XEWE_*` line (with its chip guard) is one of the pad's overrides."""
+"""Source checks of Config.h, whose shape the tools rely on when they append module blocks."""
 
 import re
 from pathlib import Path

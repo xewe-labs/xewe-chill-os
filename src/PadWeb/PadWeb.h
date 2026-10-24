@@ -1,17 +1,6 @@
 // SPDX-FileCopyrightText: 2025-2026 Maxim Dokukin (maxdokukin.com)
 // SPDX-License-Identifier: GPL-3.0-only
 // xewe-chill-os/src/PadWeb/PadWeb.h
-//
-// The cooling pad's glue, a project-local module (id `pad`, NVS namespace `pad`) that
-//   1. links the sensor to the fan curve: it is an Mlx90614Listener and passes every reading to
-//      fan.set_temperature() (offline -> NaN -> the curve's fail-safe: fans at the last point);
-//   2. colours the strip along the same curve through the led module: off below the first point
-//      (0.5 C hysteresis), cold colour at the first point, hot at the last, a blend in between. A
-//      colour change is a led.sync_color() (stored by the led module), so it is sent only when the
-//      colour moved by XEWE_PAD_COLOR_STEP and at most once per XEWE_PAD_COLOR_MIN_MS.
-//      `$pad lights off` leaves the strip to the led module's own commands;
-//   3. serves the pad page at /pad and at / (web-interface root hook; the command console moves to
-//      /console) and its JSON API on the web-interface module's server (attach(web_interface)).
 #pragma once
 
 #include <string>
@@ -25,7 +14,7 @@
 #include "../Mlx90614/Mlx90614.h"
 #include "Config.h"
 
-// Stored settings (NVS namespace "pad", key "data"). Append only; bump `schema` on a change.
+// Append only; bump `schema` on a change.
 struct PadStore : xewe::FlexData<PadStore> {
     static constexpr uint8_t SCHEMA = 1;
     uint8_t schema = SCHEMA;
@@ -50,21 +39,17 @@ public:
         const bool keep_enabled = true) override;
     std::string status(const bool verbose = false) const override;
 
-    // the sensor -> curve link (Mlx90614Listener)
     void on_temperature(float object_c, float ambient_c, bool online) override;
 
-    // registers the page (/pad and, through web.set_root, /) and the JSON routes on web's server;
     // call once from setup(), before os.begin()
     void attach(WebInterface& web);
 
-    // "#RRGGBB" or "RRGGBB"; an unchanged colour is not written again. persist = false: RAM only
+    // an unchanged colour is not written again; persist = false keeps it in RAM
     bool set_cold_color(const std::string& hex, bool persist = true);
     bool set_hot_color(const std::string& hex, bool persist = true);
     void set_lights(bool on);
 
-    // {"curve_edge_colors":{"start","end"},"temp_curve":[{"temp","speed"}]} (the page's shape)
     std::string get_ui_json() const;
-    // {"lights","shown":"#RRGGBB" (the led colour),"temperature"|null,"led_brightness","led_state"}
     std::string get_lights_json() const;
 
 private:

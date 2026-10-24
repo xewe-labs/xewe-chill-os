@@ -218,7 +218,7 @@ void Mlx90614::start_bus() {
     release_pins();
     if (!pins_configured() || sda_pin == scl_pin)
         return;
-    // core pin registry: refused (and reported) when another module holds a pin
+    // the core pin registry refuses a pin another module holds
     if (!xewe::pins::claim(sda_pin, id.c_str()))
         return;
     if (!xewe::pins::claim(scl_pin, id.c_str())) {
@@ -261,8 +261,7 @@ float Mlx90614::read_i2c_temp(uint8_t register_address) {
     const uint8_t lsb = static_cast<uint8_t>(Wire.read());
     const uint8_t msb = static_cast<uint8_t>(Wire.read());
     Wire.read(); // PEC, not checked
-    // bit 15 is the sensor's error flag (0xFFFF on a glitched bus reads as 1037 C): an error, not
-    // hot
+    // bit 15 is the error flag: 0xFFFF on a glitched bus would read as 1037 C
     float celsius;
     if (!mlx90614_fx::raw_to_celsius(lsb, msb, celsius)) {
         read_errors++;
@@ -272,8 +271,7 @@ float Mlx90614::read_i2c_temp(uint8_t register_address) {
 }
 
 int Mlx90614::scan() {
-    // bounded: a per-probe timeout, an overall budget and a stop on a dead bus (a bare
-    // bus without pull-ups would otherwise block the console for tens of seconds)
+    // bounded, because a bare bus without pull-ups would block the console for tens of seconds
     const uint16_t saved_timeout = Wire.getTimeOut();
     Wire.setTimeOut(XEWE_MLX90614_SCAN_PROBE_MS);
     const uint32_t start = millis();

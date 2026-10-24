@@ -1,14 +1,7 @@
 # SPDX-FileCopyrightText: 2025-2026 Maxim Dokukin (maxdokukin.com)
 # SPDX-License-Identifier: GPL-3.0-only
 # xewe-chill-os/tests/board/test_mlx90614.py
-"""Board tests of the project-local Mlx90614 module (`$mlx90614`, src/Mlx90614/). Run by `xewe test`
-with every project test.
-
-Hardware preconditions: a provisioned board. The address test needs nothing wired and restores the
-address it found. The bare-bus test moves the I2C bus to XEWE_TEST_MLX_SDA / XEWE_TEST_MLX_SCL (free
-GPIOs with nothing attached) and moves it back afterwards. The temperature test needs a real
-MLX90614 on the configured pins (XEWE_TEST_MLX_PRESENT=1).
-"""
+"""Board tests of `$mlx90614`; the preconditions and keys are in tests/README.md."""
 
 import os
 

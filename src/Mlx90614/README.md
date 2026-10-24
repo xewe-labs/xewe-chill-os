@@ -1,4 +1,4 @@
-# mlx90614 — MLX90614 contactless I2C temperature sensor
+# src/Mlx90614: the MLX90614 contactless I2C temperature sensor
 
 ## Overview
 
@@ -103,7 +103,7 @@ A project-local module: `xewe-chill-os.ino` includes `src/Mlx90614/Mlx90614.h` a
 ### Tests
 
 Unit: `tests/unit/test_mlx90614.py` (builds `tests/unit/test_convert.cpp` with g++). Board:
-`tests/board/test_mlx90614.py`. Run with `xewe test` ([doc/testing.md](../../doc/testing.md)).
+`tests/board/test_mlx90614.py`. Run with `xewe test` ([doc/TESTING.md](../../doc/TESTING.md)).
 
 ## Known issues
 

@@ -1,11 +1,7 @@
 // SPDX-FileCopyrightText: 2025-2026 Maxim Dokukin (maxdokukin.com)
 // SPDX-License-Identifier: GPL-3.0-only
 // xewe-chill-os/tests/unit/test_convert.cpp
-//
-// Unit test of src/Mlx90614/Convert.h (no Arduino): built and run by
-// tests/unit/test_mlx90614.py::test_convert_unit_gpp with g++ -std=c++17 -Wall -Wextra -Werror.
-// Prints one line per check, then "PASSED|FAILED: N check(s), F failure(s)"; exits non-zero on a
-// failure.
+// Built and run by tests/unit/test_mlx90614.py::test_convert_unit_gpp; exits non-zero on a failure.
 #include <cmath>
 #include <cstdint>
 #include <cstdio>

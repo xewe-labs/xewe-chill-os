@@ -11,7 +11,7 @@ Write the result (pass / fail and the value seen) next to each step.
 
 ## Before you start
 
-- Wire as in [doc/wiring.md](../doc/wiring.md). Fans and strip on their own supply, grounds joined.
+- Wire as in [doc/WIRING.md](../doc/WIRING.md). Fans and strip on their own supply, grounds joined.
   The strip data pin is `XEWE_LED_PIN_DATA` in `Config.h` (GPIO 6 on C3/C6).
 - Have a heat source for the sensor: a warm hand, a hair dryer on low at 30 cm, or a mug of hot water.
 - Have a phone or laptop on the same Wi-Fi.

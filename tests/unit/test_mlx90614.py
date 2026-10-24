@@ -1,9 +1,7 @@
 # SPDX-FileCopyrightText: 2025-2026 Maxim Dokukin (maxdokukin.com)
 # SPDX-License-Identifier: GPL-3.0-only
 # xewe-chill-os/tests/unit/test_mlx90614.py
-"""Unit tests of the project-local Mlx90614 module (src/Mlx90614/): source facts and the pure value
-mapping (src/Mlx90614/Convert.h, built with the host g++), no board and no build. The sketch
-declares it."""
+"""Source checks of src/Mlx90614/, and the value mapping of Convert.h built with g++."""
 
 import re
 import shutil

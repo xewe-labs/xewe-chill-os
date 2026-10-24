@@ -10,20 +10,17 @@
 #include <cstdlib>
 #include <utility>
 
-// the pad page
 #include "index_html.h"
 #include "script_js.h"
 #include "styles_css.h"
 
 namespace {
-// hex colours: the core's helpers (xewe::color): "#rrggbb" or "rrggbb", either case
 curve_math::Rgb parse_or(const std::string& hex, curve_math::Rgb fallback) {
     curve_math::Rgb c = fallback;
     xewe::color::parse_hex_color(hex, c.r, c.g, c.b); // outputs untouched on failure
     return c;
 }
 
-// any accepted form -> the stored form "#RRGGBB"; false (out untouched) when not a colour
 bool normalize_hex(const std::string& hex, std::string& out) {
     uint8_t r, g, b;
     if (!xewe::color::parse_hex_color(hex, r, g, b))
@@ -32,8 +29,7 @@ bool normalize_hex(const std::string& hex, std::string& out) {
     return true;
 }
 
-// true when a channel differs by `step` or more, or `exact` and any channel differs (an edge colour
-// is shown exactly, not left `step` short)
+// `exact` lets an edge colour be shown exactly instead of `step` short
 bool moved(const std::array<uint8_t, 3>& shown, const std::array<uint8_t, 3>& target, int step,
     bool exact) {
     for (size_t i = 0; i < 3; ++i) {
@@ -67,7 +63,6 @@ PadWeb::PadWeb(xewe::Os& host, Fan& fan_ref, Mlx90614& mlx90614_ref, Led& led_re
           /* has_cli_cmds        */ true),
       fan(fan_ref), mlx90614(mlx90614_ref), led(led_ref) {
     // no add_requirement(): the page and the strip keep working while fan or mlx90614 is disabled
-    // the glue: every sensor reading (and every offline poll) goes to the fan curve
     mlx90614.listeners.add(this);
 
     register_command(
@@ -96,8 +91,7 @@ void PadWeb::begin_routines_required() {
         data = PadStore{}; // first boot: store the defaults
         save();
     } else if (!stored.has("schema") || stored.schema != PadStore::SCHEMA) {
-        // has(): a blob without a readable `schema` field is foreign too, not "schema 1 by default"
-        // another firmware's layout: never reinterpret it, never overwrite it at boot
+        // a blob without a readable `schema` is foreign too; it is never overwritten at boot
         os.serial.print("Pad: stored colours are from another firmware (schema " +
             std::to_string(stored.schema) + ", expected " + std::to_string(PadStore::SCHEMA) +
             "); using the defaults until the next change");
@@ -159,8 +153,7 @@ bool PadWeb::may_change(uint32_t now) const {
     return !changed_once || now - last_change_ms >= XEWE_PAD_COLOR_MIN_MS;
 }
 
-// The strip follows the curve: on/off with hysteresis, Solid mode, the curve colour. Every led call
-// is stored by the led module, so each is sent only on a real change and rate limited.
+// The led module stores every call in NVS, so each is sent only on a change and rate limited.
 void PadWeb::update_lights(uint32_t now) {
     if (!data.lights || !may_change(now))
         return;
@@ -305,8 +298,7 @@ void PadWeb::handle_ui_config_post() {
         return;
     }
 
-    // every change in RAM first, then at most one NVS write per blob (`pad/data`, `fan/curve`), and
-    // none for a blob that did not change (the page posts colours and curve together on every save)
+    // the page posts colours and curve together, so write only the blobs that changed
     bool ok = true;
     const PadStore before = data;
     JsonObjectConst colors = doc["curve_edge_colors"];

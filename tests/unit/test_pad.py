@@ -1,9 +1,7 @@
 # SPDX-FileCopyrightText: 2025-2026 Maxim Dokukin (maxdokukin.com)
 # SPDX-License-Identifier: GPL-3.0-only
 # xewe-chill-os/tests/unit/test_pad.py
-"""Unit tests of the cooling pad's glue (src/PadWeb/, id `pad`) and of the project's files: source
-facts only, no board and no build. Fan and Mlx90614 have their own unit tests here; the repo modules
-(wifi, web-interface, led) bring theirs."""
+"""Source checks of src/PadWeb/ and of the project's files."""
 
 import re
 from pathlib import Path

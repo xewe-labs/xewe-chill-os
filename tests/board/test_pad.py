@@ -1,17 +1,7 @@
 # SPDX-FileCopyrightText: 2025-2026 Maxim Dokukin (maxdokukin.com)
 # SPDX-License-Identifier: GPL-3.0-only
 # xewe-chill-os/tests/board/test_pad.py
-"""Board tests of the cooling pad's glue (`$pad`, src/PadWeb/) between fan, mlx90614 and led. Run by
-`xewe test` with every project test.
-
-Hardware preconditions: a provisioned board (`xewe provision` answers the "enable?" prompts of fan
-and mlx90614; pad asks nothing) with the led setup done. Nothing needs to be wired: without a sensor
-mlx90614 reports offline every 5 s, PadWeb passes NaN to the fan curve and every fan runs at the last
-point's speed (fail-safe), and the strip is lit in the hot colour, which
-`test_offline_sensor_fail_safe` checks. The closed loop needs the real pad (XEWE_TEST_PAD_HARDWARE=1).
-While `$pad lights` is on, PadWeb drives the strip through the led module (on/off, Solid mode, the
-curve colour), at most once per XEWE_PAD_COLOR_MIN_MS (2 s); `SETTLE_S` waits that out.
-"""
+"""Board tests of `$pad`; the preconditions and keys are in tests/README.md."""
 
 import os
 import re

@@ -1,17 +1,7 @@
 # SPDX-FileCopyrightText: 2025-2026 Maxim Dokukin (maxdokukin.com)
 # SPDX-License-Identifier: GPL-3.0-only
 # xewe-chill-os/tests/board/test_fan.py
-"""Board tests of the project-local Fan module (`$fan`, src/Fan/). Run by `xewe test` with every
-project test.
-
-Hardware preconditions: a provisioned board (first boot done; `xewe provision` answers the
-"Would you like to enable ...?" prompts). Nothing needs to be wired for most tests. The add/set/remove
-test needs a free output GPIO that is not a default fan pin (XEWE_FAN_FAN1_PWM.. defines):
-XEWE_TEST_FAN_PIN; the shared-pin test also XEWE_TEST_FAN_PIN2 (PWM into nothing is harmless). The RPM
-tests need a real 4-wire fan: XEWE_TEST_FAN_PWM_PIN + XEWE_TEST_FAN_TACH_PIN wired to it.
-PadWeb feeds the curve from the sensor (NaN while it is offline), so the curve rewrites every fan
-speed once per curve_ms and speeds set by hand are not read back.
-"""
+"""Board tests of `$fan`; the preconditions and keys are in tests/README.md."""
 
 import os
 import time

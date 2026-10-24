@@ -1,14 +1,7 @@
 // SPDX-FileCopyrightText: 2025-2026 Maxim Dokukin (maxdokukin.com)
 // SPDX-License-Identifier: GPL-3.0-only
 // xewe-chill-os/src/Fan/Curve.h
-//
-// The fan curve as pure functions: no Arduino, no XeWeCore, no I/O. Fan.cpp calls these;
-// tests/unit/test_curve.cpp builds them with the host g++ (-Wall -Wextra -Werror).
-// The point type is a template parameter: anything with `float temp` and `uint8_t speed` (0-100 %),
-// i.e. the FlexData-backed FanCurvePoint on the device, a plain struct in the host test.
-// The colour helpers (leds_on, led_colour) map a temperature along the same curve to a colour, for
-// integrations that light LEDs from the curve (PadWeb). Hex colours: the core's
-// xewe::color::parse_hex_color / to_hex_color.
+// No Arduino or XeWeCore here: tests/unit/test_curve.cpp builds this file with the host g++.
 #pragma once
 
 #include <cctype>
@@ -21,7 +14,7 @@
 
 namespace curve_math {
 
-// Version of the stored FlexData blob (`fan/curve`, field `schema`). Bump on any layout change.
+// Bump on any layout change of the stored `fan/curve` blob.
 constexpr uint8_t SCHEMA = 1;
 constexpr size_t MAX_POINTS = 16;
 constexpr float MIN_TEMP = -40.0f; // accepted point temperatures, °C
@@ -63,14 +56,11 @@ inline uint8_t clamp_speed(int pct) {
     return static_cast<uint8_t>(pct < 0 ? 0 : (pct > 100 ? 100 : pct));
 }
 
-// 0-100 % -> 0-255 duty (truncated); above 100 % counts as 100 %.
 inline uint8_t speed_to_pwm(uint8_t pct) {
     return static_cast<uint8_t>((static_cast<unsigned>(clamp_speed(pct)) * 255u) / 100u);
 }
 
-// A stored or submitted curve is usable when: at most MAX_POINTS, every temperature in range,
-// every speed 0-100, temperatures strictly increasing with no two within SAME_TEMP.
-// An empty curve is valid (the loop then does nothing).
+// An empty curve is valid; the loop then does nothing.
 template <class P> CurveError validate_points(const std::vector<P>& points) {
     if (points.size() > MAX_POINTS)
         return CurveError::too_many;
@@ -102,8 +92,7 @@ inline std::string schema_message(uint8_t schema) {
         "until the next change)";
 }
 
-// points valid (see validate_points); returns 0-100 %. Empty curve: 0. At or below the first /
-// at or above the last point: that point's speed. In between: linear interpolation, truncated.
+// Expects points that passed validate_points.
 template <class P> uint8_t target_speed(const std::vector<P>& points, float temp) {
     if (points.empty())
         return 0;
@@ -129,20 +118,16 @@ template <class P> uint8_t target_speed(const std::vector<P>& points, float temp
     return 0;
 }
 
-// A source that never reported: once `stale_ms` has passed since begin() with a curve configured
-// and no temperature yet, the fans go to the fail-safe speed, target_speed(points, NaN) (the last
-// point, full cooling with the default curve). The first reading ends it.
+// When true, the fans run at the fail-safe speed target_speed(points, NaN) until the first reading.
 inline bool never_received(bool seen, bool has_points, uint32_t since_begin_ms, uint32_t stale_ms) {
     return !seen && has_points && since_begin_ms > stale_ms;
 }
 
-// Same duty for every fan: curve speed -> 0-255 PWM.
 template <class P> uint8_t target_pwm(const std::vector<P>& points, float temp) {
     return speed_to_pwm(target_speed(points, temp));
 }
 
-// LED on/off with hysteresis around the first point: on at or above it, off only once the
-// temperature drops LED_HYSTERESIS below it, unchanged in the band. NaN keeps the strips on (hot).
+// NaN keeps the strips on, because it counts as hot.
 template <class P> bool leds_on(const std::vector<P>& points, float temp, bool was_on) {
     if (points.empty() || std::isnan(temp))
         return true;
@@ -154,9 +139,7 @@ template <class P> bool leds_on(const std::vector<P>& points, float temp, bool w
     return was_on;
 }
 
-// `$fan curve set` argument: "T:P,T:P,..." (temperature in °C, speed 0-100 %; any order) or "none"
-// (empty curve). Fills `out` in the given order (the caller sorts and validates); false on a syntax
-// error, a speed outside 0-100 or more than MAX_POINTS points.
+// "T:P,T:P,..." in any order, or "none"; the caller sorts and validates.
 template <class P> bool parse_curve_spec(const std::string& spec, std::vector<P>& out) {
     out.clear();
     if (spec == "none")
@@ -195,8 +178,7 @@ template <class P> bool parse_curve_spec(const std::string& spec, std::vector<P>
     return true;
 }
 
-// Strip colour at a temperature: cold at or below the first point, hot at or above the last
-// (and for NaN), a linear blend in between (truncated per channel).
+// NaN shows the hot colour.
 template <class P> Rgb led_colour(const std::vector<P>& points, float temp, Rgb cold, Rgb hot) {
     if (points.empty() || std::isnan(temp))
         return hot;
