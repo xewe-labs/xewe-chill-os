@@ -51,6 +51,6 @@ header lines.
 A change to the first-boot flow, the commands, the wiring or the layout updates `README.md` and
 the matching page in `doc/` in the same change.
 
-The xewe-labs organization guidelines at `https://github.com/xewe-labs/.github` (`AGENTS.md`
-and `guidelines/`) apply where this skill is silent. Where the two differ, the guidelines win
+The xewe-labs organization guidelines at `https://github.com/xewe-labs/.github` (its
+`guidelines/`) apply where this skill is silent. Where the two differ, the guidelines win
 and this file is corrected.
