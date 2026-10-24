@@ -2,6 +2,8 @@
 
 Firmware for a DIY laptop cooling pad on an ESP32-C3, -C6 or -S3, built on [XeWe OS](https://github.com/xewe-labs/xewe-os). An infrared sensor reads the laptop's underside, two PC fans follow a temperature curve that you set, and an LED strip shows the temperature as a colour.
 
+<p align="center"><img src="doc/media/WEB_UI_CURVE.webp" alt="Fan curve page" width="720"></p>
+
 ## Problem
 
 - A fixed-speed pad makes the same noise whether the laptop is idle or under load, and turning the fans down means remembering to turn them up.
