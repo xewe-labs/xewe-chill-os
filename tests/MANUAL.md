@@ -22,7 +22,7 @@ Write the result (pass / fail and the value seen) next to each step.
 ```
 
 `./run.sh` erases the flash, so this is a first boot. Answer the first-boot questions as in the
-README (First boot): name, Wi-Fi, `y` for Fan and MLX90614 if asked, and the strip setup (WS2812B,
+[doc/FIRST_BOOT.md](../doc/FIRST_BOOT.md): name, Wi-Fi, `y` for Fan and MLX90614 if asked, and the strip setup (WS2812B,
 5 V, one strip of 12 LEDs, colour order).
 
 ## 1. First boot

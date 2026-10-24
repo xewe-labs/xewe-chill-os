@@ -14,6 +14,19 @@ Open `PadWeb.cpp` first. `index_html.h`, `script_js.h` and `styles_css.h` hold t
 | `GET /led/data` | `{"lights","shown","temperature","led_brightness","led_state"}`; `shown` is the strip colour as `#RRGGBB`, `temperature` is `null` while offline |
 | `GET /api/state` | the fan, lights, sensor and UI objects in one reply |
 
+Open `http://<device-ip>/` (also `/pad`). The command console is at `/console`. The page controls:
+
+| Control | What it does |
+|---|---|
+| Curve graph | The curve, the colour gradient under it and a white dot at the current temperature and fan speed. Updates every second. |
+| Table | One row per point: temperature (0-100 °C) and speed (0-100 %). The console accepts -40 to 200 °C. |
+| Add Point / Delete | Adds a point 5 °C after the last one / removes a point. The page keeps at least 2 points. |
+| Save Curve | Sends the curve and the colours to the device. Nothing changes on the device before you save. |
+| Coldest Color / Hottest Color | Saved as soon as you close the colour picker. |
+
+Scripts can also call `GET /fan/data`, `/mlx90614/data` and `POST /ui/config` with
+`{"temp_curve":[{"temp":30,"speed":20}],"curve_edge_colors":{"start":"#00FFFF","end":"#FF0000"}}`.
+
 ```sh
 build/tools/.venv/bin/python -m xewe test --unit-only -- -k pad
 ```

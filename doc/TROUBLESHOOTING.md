@@ -77,6 +77,7 @@ Set your curve again afterwards.
 | IP address | `$wifi status` shows it. Use `http://`, not `https://`. |
 | Not connected | `$wifi connect` and pick the network again. |
 | Same network | Your computer must be on the same network. Guest networks often block devices. |
+| No access point | The device joins an existing Wi-Fi network. It cannot start its own. |
 
 ## Factory reset
 

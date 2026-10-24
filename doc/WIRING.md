@@ -3,6 +3,17 @@
 Connect all grounds: ESP32 GND, fan supply ground, strip supply ground, sensor GND.
 Do not power fans or the strip from the ESP32's 3.3 V pin.
 
+## Parts
+
+| Item | Notes |
+|---|---|
+| ESP32-C3, ESP32-C6 or ESP32-S3 board | The pad was built with a C3. |
+| 2 × 4-wire PWM fans (PC fans) | 12 V or 5 V, with their own supply. |
+| MLX90614 sensor module (e.g. GY-906) | I²C, address 0x5A. Use a module with I²C pull-up resistors. |
+| WS2812B LED strip | 12 LEDs on the pad. 5 V supply. |
+| 2 × 10 kΩ resistors | Optional: external pull-ups on the tach lines. |
+| Power supply | For the fans and the strip. Connect all grounds together. |
+
 ## Pins per chip
 
 First-boot defaults. After the first boot the fan and sensor pins are stored on the device; change
